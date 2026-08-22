@@ -38,6 +38,26 @@ describe("buildPatientDataFromProfile", () => {
     expect(patientData.symptoms).toEqual(["fatigue"]);
   });
 
+  it("submits only canonical symptoms the user confirmed", () => {
+    const profile = {
+      patientId: "P001",
+      questionnaire: {
+        baseline_symptoms: [
+          "fatigue",
+          "polyuria",
+          "blurred_and_distorted_vision",
+          "raw parser suggestion",
+        ],
+      },
+    };
+
+    expect(buildPatientDataFromProfile(profile).symptoms).toEqual([
+      "fatigue",
+      "polyuria",
+      "blurred_and_distorted_vision",
+    ]);
+  });
+
   it("uses null for absent vitals", () => {
     const profile = { patientId: "P001", questionnaire: {} };
 

@@ -1,3 +1,5 @@
+const KNOWN_SYMPTOMS = require("../../shared/symptomVocabulary.json");
+
 function normalizePatientData(patientData) {
   const { vitals, symptoms, labs } = patientData;
   const bmi = calculateBmi(vitals.weight_kg, vitals.height_cm);
@@ -16,14 +18,6 @@ function normalizePatientData(patientData) {
     },
   };
 }
-
-const KNOWN_SYMPTOMS = [
-  "fatigue",
-  "frequent_urination",
-  "blurred_vision",
-  "chest_pain",
-  "shortness_of_breath",
-];
 
 function encodeSymptoms(symptoms = []) {
   return KNOWN_SYMPTOMS.map((symptom) => (symptoms.includes(symptom) ? 1 : 0));
