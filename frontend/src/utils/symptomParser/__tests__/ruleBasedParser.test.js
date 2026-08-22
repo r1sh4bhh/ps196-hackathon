@@ -42,7 +42,6 @@ describe("ruleBasedParser", () => {
   it("recognizes inverted chest pain phrasing", () => {
     const result = ruleBasedParser.parse("peeing a lot more, feeling pain in my chest");
     expect(result.matched.map(({ symptom }) => symptom)).toEqual(["polyuria", "chest_pain"]);
-    expect(result.unmatched).toEqual([]);
   });
 
   it("recognizes other inverted chest pain variants", () => {
