@@ -30,6 +30,41 @@ export function getMockPrediction(patientData) {
   };
 }
 
+export const mockPrediction = {
+  risk_scores: {
+    diabetes: 0.82,
+    hypertension: 0.71,
+    heart_disease: 0.64,
+    obesity: 0.58,
+  },
+  top_disease: "diabetes",
+  confidence: 0.82,
+  trajectory: [
+    { day: 1, risk: 0.82 },
+    { day: 2, risk: 0.83 },
+    { day: 3, risk: 0.84 },
+    { day: 4, risk: 0.85 },
+    { day: 5, risk: 0.86 },
+  ],
+  evidence: [
+    {
+      disease: "diabetes",
+      factors: ["high_glucose"],
+      next_test: "HbA1c",
+    },
+  ],
+};
+
+export const mockBaseline = {
+  risk_scores: {
+    diabetes: 0.65,
+    hypertension: 0.6,
+    heart_disease: 0.55,
+    obesity: 0.5,
+  },
+  recordedAt: "2026-06-01",
+};
+
 function estimateObesityRisk(patientData) {
   const { weight_kg, height_cm } = patientData?.vitals || {};
   if (!weight_kg || !height_cm) {
