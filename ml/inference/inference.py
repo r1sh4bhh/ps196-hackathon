@@ -36,7 +36,25 @@ sys.path.insert(0, str(_HERE))
 
 MODEL_DIR = _ML_ROOT / "models"
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
+
+
+# Screening thresholds, deliberately lower than the 0.5 a classifier uses by
+# default.
+#
+# On the held-out Pima split, argmax classification caught only 30 of 54
+# diabetic patients - recall 0.56. For a triage tool that is the wrong failure
+# mode: a false alarm costs a clinician a few minutes of review, while a missed
+# case costs the patient months or years of undetected progression. Flagging
+# from 0.30 raises recall substantially at some cost in precision, which is the
+# correct trade here.
+#
+# These are review-priority bands, NOT calibrated probabilities of disease, and
+# must never be presented to a user as "you have an N% chance of diabetes".
+RISK_THRESHOLDS: dict[str, dict[str, float]] = {
+    "diabetes": {"elevated": 0.30, "high": 0.60},
+    "cardiac": {"elevated": 0.35, "high": 0.65},
+}
 
 
 def _unavailable(reason: str) -> dict[str, Any]:
@@ -77,6 +95,20 @@ def _top_predictions(model: Any, vector: list[float], limit: int = 5) -> list[di
     ]
 
 
+def _band(probability: float, kind: str) -> str:
+    """Map a probability onto a screening band using the thresholds above.
+
+    Three buckets, not a percentage, because the underlying probabilities are
+    not calibrated well enough to justify finer granularity.
+    """
+    thresholds = RISK_THRESHOLDS[kind]
+    if probability >= thresholds["high"]:
+        return "high"
+    if probability >= thresholds["elevated"]:
+        return "elevated"
+    return "low"
+
+
 def _predict_symptoms(patient: dict[str, Any]) -> dict[str, Any]:
     """Model A - symptom differential across 41 conditions."""
     from feature_spec import MODEL_A_SYMPTOMS, build_symptom_vector, validate_vector
@@ -100,12 +132,18 @@ def _predict_symptoms(patient: dict[str, Any]) -> dict[str, Any]:
         if matched == 0:
             return _unavailable("none of the provided symptoms are in the model vocabulary")
 
+        submitted = len(list(symptoms))
         return {
             "available": True,
             "source": "model",
             "predictions": _top_predictions(model, vector),
             "symptoms_matched": matched,
-            "symptoms_submitted": len(list(symptoms)),
+            "symptoms_submitted": submitted,
+            # Confidences come from a model trained on synthetic, near-perfectly
+            # separable data. They rank plausible conditions; they are not
+            # probabilities of the patient having them.
+            "confidence_is_ranking_only": True,
+            "unmatched_symptoms": max(0, submitted - matched),
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")
@@ -128,12 +166,19 @@ def _predict_diabetes(patient: dict[str, Any]) -> dict[str, Any]:
 
         vector = vector_from_patient_diabetes(patient, medians)
         probability = float(model.predict_proba([vector])[0][1])
+        band = _band(probability, "diabetes")
 
+        labs = patient.get("labs") or {}
         return {
             "available": True,
             "source": "model",
             "risk_score": round(probability, 4),
-            "risk_band": _band(probability),
+            "risk_band": band,
+            "flagged_for_review": band != "low",
+            "threshold_used": RISK_THRESHOLDS["diabetes"]["elevated"],
+            # Glucose is by far the strongest predictor. Without it the score
+            # rests on the training median, so the caller should say so.
+            "partial_input": labs.get("glucose") in (None, ""),
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")
@@ -151,12 +196,15 @@ def _predict_heart(patient: dict[str, Any]) -> dict[str, Any]:
         model = bundle.get("model") if isinstance(bundle, dict) else bundle
         vector = vector_from_patient_heart(patient)
         probability = float(model.predict_proba([vector])[0][1])
+        band = _band(probability, "cardiac")
 
         return {
             "available": True,
             "source": "model",
             "risk_score": round(probability, 4),
-            "risk_band": _band(probability),
+            "risk_band": band,
+            "flagged_for_review": band != "low",
+            "threshold_used": RISK_THRESHOLDS["cardiac"]["elevated"],
             # Honesty flag: the intake form does not collect ca/thal/slope/
             # oldpeak, so those positions carry defaults rather than measured
             # values. The UI should surface this rather than present the score
@@ -165,15 +213,6 @@ def _predict_heart(patient: dict[str, Any]) -> dict[str, Any]:
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")
-
-
-def _band(probability: float) -> str:
-    """Coarse risk banding. Deliberately three buckets, not a false precision."""
-    if probability >= 0.66:
-        return "high"
-    if probability >= 0.33:
-        return "moderate"
-    return "low"
 
 
 def run(patient: dict[str, Any]) -> dict[str, Any]:
@@ -202,8 +241,45 @@ def run(patient: dict[str, Any]) -> dict[str, Any]:
         not results[section].get("available", False) for section in model_sections
     )
 
+    # A single flat list of everything a clinician should look at, so the UI
+    # does not have to re-derive priority from five separate sections.
+    review: list[dict[str, Any]] = []
+
+    hypertension = results.get("hypertension") or {}
+    if hypertension.get("available") and hypertension.get("stage") in {
+        "stage_2",
+        "hypertensive_crisis",
+    }:
+        review.append(
+            {
+                "finding": "blood pressure",
+                "detail": hypertension.get("description"),
+                "urgency": (
+                    "immediate"
+                    if hypertension.get("stage") == "hypertensive_crisis"
+                    else "routine"
+                ),
+                "source": "rule",
+            }
+        )
+
+    for key, label in (("diabetes_risk", "diabetes risk"), ("cardiac_risk", "cardiac risk")):
+        section = results[key]
+        if section.get("flagged_for_review"):
+            review.append(
+                {
+                    "finding": label,
+                    "detail": f"{section['risk_band']} ({section['risk_score']})",
+                    "urgency": "routine",
+                    "source": "model",
+                }
+            )
+
+    results["review_priority"] = review
+
     results["disclaimer"] = (
-        "Screening support only. Not a diagnosis. All findings require "
+        "Screening support only. Not a diagnosis. Risk bands are review "
+        "priorities, not probabilities of disease. All findings require "
         "review by a qualified clinician."
     )
 
