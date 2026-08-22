@@ -24,7 +24,8 @@ export default function ThemeToggle() {
       aria-label={`Switch to ${nextTheme} mode`}
       onClick={() => setTheme(nextTheme)}
     >
-      {theme === "dark" ? "☀ Light mode" : "◐ Dark mode"}
+      <span aria-hidden="true">{theme === "dark" ? "☀" : "◐"}</span>{" "}
+      {theme === "dark" ? "Light mode" : "Dark mode"}
     </button>
   );
 }

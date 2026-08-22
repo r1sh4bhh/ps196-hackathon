@@ -112,6 +112,7 @@ describe("DashboardShell ml_detail caveats", () => {
       ["low", "low"],
       ["elevated", "moderate"],
       ["high", "high"],
+      ["severe", "severe"],
       ["very_high", "severe"],
       ["stage_2", "severe"],
       ["unknown_band", null],
