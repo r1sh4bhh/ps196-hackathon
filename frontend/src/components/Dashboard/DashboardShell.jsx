@@ -114,7 +114,7 @@ export default function DashboardShell({
           {differential.unmatchedSymptoms > 0 ? (
             <p className="differential-note">
               {differential.unmatchedSymptoms} submitted symptom
-              {differential.unmatchedSymptoms === 1 ? " was" : "s were"} not recognised by the
+              {differential.unmatchedSymptoms === 1 ? " was" : "s were"} not recognized by the
               model.
             </p>
           ) : null}

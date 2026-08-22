@@ -126,7 +126,7 @@ describe("DashboardShell ml_detail caveats", () => {
     expect(dom.querySelector(".dashboard-notice").textContent).toContain("models were unavailable");
     expect(dom.querySelector(".symptom-differential").textContent).toContain("Ranking only");
     expect(dom.querySelector(".symptom-differential").textContent).toContain("weak evidence");
-    expect(dom.querySelector(".symptom-differential").textContent).toContain("was not recognised");
+    expect(dom.querySelector(".symptom-differential").textContent).toContain("was not recognized");
     expect(dom.querySelector(".dashboard-disclaimer").textContent).toContain(
       "Screening support only."
     );
