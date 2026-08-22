@@ -195,7 +195,7 @@ describe("computeBaseline", () => {
       [[100, 101, 110, 111], "rising"],
       [[111, 110, 101, 100], "falling"],
       [[100, 101, 100, 101], "stable"],
-    ])("reports a %s trend as %s", (values, trend) => {
+    ])("reports values %p as a %s trend", (values, trend) => {
       const days = [30, 20, 10, 0];
       const history = values.map((value, index) => ({ value, timestamp: daysAgo(days[index]) }));
       const result = computeBaseline("systolic_bp", history, 120);

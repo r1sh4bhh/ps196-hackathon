@@ -40,8 +40,19 @@ export function computeBaseline(metric, history, currentValue) {
         .map((entry) => ({ value: toNumber(entry?.value), timestamp: toTimestamp(entry?.timestamp) }))
         .filter((entry) => entry.value !== null)
     : [];
-  const values = observations.map((entry) => entry.value);
   const current = toNumber(currentValue);
+
+  // Sort chronologically (undated entries are treated as oldest, keeping
+  // their original relative order) so slice(-5) below reliably reflects
+  // the most recent readings rather than however `history` happened to be
+  // ordered.
+  const chronological = [...observations].sort((a, b) => {
+    if (a.timestamp === null && b.timestamp === null) return 0;
+    if (a.timestamp === null) return -1;
+    if (b.timestamp === null) return 1;
+    return a.timestamp - b.timestamp;
+  });
+  const values = chronological.map((entry) => entry.value);
 
   const sortedTimestamps = observations
     .map((entry) => entry.timestamp)
@@ -82,7 +93,7 @@ export function computeBaseline(metric, history, currentValue) {
     direction: getDirection(current, baseline),
     trend: getTrend(observations, status, clustered),
     observations: observations.length,
-    spanDays: sortedTimestamps.length >= 2 ? Math.round(spanMs / MS_PER_DAY) : null,
+    spanDays: sortedTimestamps.length >= 2 ? Math.floor(spanMs / MS_PER_DAY) : null,
     earliest: sortedTimestamps.length ? new Date(sortedTimestamps[0]).toISOString() : null,
     latest: sortedTimestamps.length
       ? new Date(sortedTimestamps[sortedTimestamps.length - 1]).toISOString()
