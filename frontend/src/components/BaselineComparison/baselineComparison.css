@@ -1,0 +1,77 @@
+.baseline-comparison {
+  background: #fff;
+  border: 1px solid #e1e6e4;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.baseline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.baseline-header h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.baseline-date {
+  font-size: 12px;
+  color: #6b7c78;
+}
+
+.baseline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.baseline-table th {
+  text-align: left;
+  color: #6b7c78;
+  font-weight: 500;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e1e6e4;
+}
+
+.baseline-table td {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f2f1;
+}
+
+.disease-name {
+  text-transform: capitalize;
+}
+
+.delta-up {
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.delta-down {
+  color: #2f6f5e;
+  font-weight: 600;
+}
+
+.delta-flat {
+  color: #6b7c78;
+}
+
+.baseline-empty {
+  padding: 24px;
+  text-align: center;
+  color: #6b7c78;
+  font-size: 13px;
+  border: 1px dashed #e1e6e4;
+  border-radius: 12px;
+}
+
+@media (max-width: 640px) {
+  .baseline-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

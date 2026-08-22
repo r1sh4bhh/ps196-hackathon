@@ -1,0 +1,32 @@
+.trajectory-container {
+  background: #fff;
+  border: 1px solid #e1e6e4;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.trajectory-title {
+  font-size: 14px;
+  margin: 0 0 8px;
+  color: #1c2b27;
+}
+
+.trajectory-svg {
+  display: block;
+  max-width: 100%;
+}
+
+.trajectory-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #6b7c78;
+  margin-top: 4px;
+}
+
+.trajectory-empty {
+  padding: 24px;
+  text-align: center;
+  color: #6b7c78;
+  font-size: 13px;
+}
