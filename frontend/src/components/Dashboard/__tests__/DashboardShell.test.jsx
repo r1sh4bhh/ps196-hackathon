@@ -112,6 +112,7 @@ describe("DashboardShell ml_detail caveats", () => {
       ["low", "low"],
       ["elevated", "moderate"],
       ["high", "high"],
+      ["very_high", "severe"],
       ["stage_2", "severe"],
     ])("derives %s from the existing band value", (band, expectedTier) => {
       expect(getRiskTier(band)).toBe(expectedTier);

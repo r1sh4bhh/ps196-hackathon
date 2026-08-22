@@ -16,13 +16,17 @@ import "./dashboardShell.css";
 const MIN_SPARSE_DIFFERENTIAL_SCORE = 0.4;
 
 export function getRiskTier(band) {
-  const value = String(band || "").toLowerCase().replace(/_/g, " ");
-  if (value.includes("severe") || value.includes("stage 2")) return "severe";
-  if (value.includes("high")) return "high";
-  if (value.includes("moderate") || value.includes("elevated") || value.includes("stage 1")) {
-    return "moderate";
-  }
-  return "low";
+  const value = String(band || "").toLowerCase().replace(/_/g, " ").trim();
+  return {
+    severe: "severe",
+    "very high": "severe",
+    "stage 2": "severe",
+    high: "high",
+    moderate: "moderate",
+    elevated: "moderate",
+    "stage 1": "moderate",
+    low: "low",
+  }[value] || "low";
 }
 
 export default function DashboardShell({

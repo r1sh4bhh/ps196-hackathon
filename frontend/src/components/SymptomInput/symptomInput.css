@@ -62,19 +62,36 @@
 }
 
 .symptom-manual-pick select {
-  flex: 1;
   min-width: 0;
+}
+
+.select-control {
+  position: relative;
+  display: block;
+  flex: 1;
+}
+
+.select-control::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--color-muted);
+  border-bottom: 2px solid var(--color-muted);
+  pointer-events: none;
+  transform: translateY(-70%) rotate(45deg);
 }
 
 .symptom-input select {
   appearance: none;
+  width: 100%;
   min-height: 2.75rem;
   padding: var(--space-2) 2.5rem var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-surface)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2352645e' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
-    no-repeat right var(--space-3) center;
+  background: var(--color-surface);
   color: var(--color-text);
 }
 
