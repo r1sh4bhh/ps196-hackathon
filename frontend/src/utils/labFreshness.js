@@ -1,5 +1,9 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+function ageInDays(measuredAt, currentTime) {
+  return Math.max(0, Math.floor((currentTime - measuredAt) / DAY_MS));
+}
+
 // Glucose is a point-in-time measurement, so it is useful for about a week.
 // Stable lipid panels are conventionally repeated annually, so those results
 // remain useful for roughly 12 months.
@@ -25,7 +29,7 @@ export function getStoredLabStatus(labKey, record, now = new Date()) {
     return null;
   }
 
-  const ageDays = Math.max(0, Math.floor((currentTime - measuredAt) / DAY_MS));
+  const ageDays = ageInDays(measuredAt, currentTime);
   return {
     value,
     recordedAt: new Date(measuredAt).toISOString(),
@@ -41,7 +45,7 @@ export function formatStoredLabAge(record, now = new Date()) {
     return "";
   }
 
-  const ageDays = Math.max(0, Math.floor((currentTime - measuredAt) / DAY_MS));
+  const ageDays = ageInDays(measuredAt, currentTime);
   const date = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",

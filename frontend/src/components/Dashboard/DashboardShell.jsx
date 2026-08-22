@@ -73,6 +73,13 @@ export default function DashboardShell({
     })
     .filter(Boolean)
     .join("; ");
+  const riskScoreEntries = Object.entries(riskScores);
+  const reuseCaveatDisease = Object.prototype.hasOwnProperty.call(
+    riskScores,
+    prediction.top_disease
+  )
+    ? prediction.top_disease
+    : riskScoreEntries[0]?.[0];
 
   return (
     <div className="dashboard-shell">
@@ -105,9 +112,10 @@ export default function DashboardShell({
       ) : null}
 
       <section className="summary-cards">
-        {Object.entries(riskScores).map(([disease, score], index) => {
+        {riskScoreEntries.map(([disease, score]) => {
           const detail = getRiskDetail(prediction, disease);
           const tier = getRiskTier(detail?.band);
+          const showsReuseCaveat = disease === reuseCaveatDisease && reusedLabSummary;
 
           return (
             <div className={`summary-card${tier ? ` risk-tier-${tier}` : ""}`} key={disease}>
@@ -124,7 +132,7 @@ export default function DashboardShell({
               {detail?.provenance === "model" ? (
                 <span className="risk-provenance">Model-derived score</span>
               ) : null}
-              {detail?.partialInput || (index === 0 && reusedLabSummary) ? (
+              {detail?.partialInput || showsReuseCaveat ? (
                 <span className="risk-caveat">
                   {detail?.partialInput ? (
                     <span className="risk-caveat-line">
@@ -134,7 +142,7 @@ export default function DashboardShell({
                         : ""}
                     </span>
                   ) : null}
-                  {index === 0 && reusedLabSummary ? (
+                  {showsReuseCaveat ? (
                     <span className="risk-caveat-line">{reusedLabSummary}</span>
                   ) : null}
                 </span>
