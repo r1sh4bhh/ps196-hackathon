@@ -39,6 +39,21 @@ describe("ruleBasedParser", () => {
     expect(result.negated).toEqual([]);
   });
 
+  it("recognizes inverted chest pain phrasing", () => {
+    const result = ruleBasedParser.parse("peeing a lot more, feeling pain in my chest");
+    expect(result.matched.map(({ symptom }) => symptom)).toEqual(["polyuria", "chest_pain"]);
+    expect(result.unmatched).toEqual([]);
+  });
+
+  it("recognizes other inverted chest pain variants", () => {
+    expect(ruleBasedParser.parse("pain in the chest").matched.map(({ symptom }) => symptom)).toEqual([
+      "chest_pain",
+    ]);
+    expect(
+      ruleBasedParser.parse("I'm hurting in my chest").matched.map(({ symptom }) => symptom)
+    ).toEqual(["chest_pain"]);
+  });
+
   it("uses conservative fuzzy matching for a close typo", () => {
     const result = ruleBasedParser.parse("dizzines");
     expect(result.matched[0]).toMatchObject({ symptom: "dizziness", method: "fuzzy" });
