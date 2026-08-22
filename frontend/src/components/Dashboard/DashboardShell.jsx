@@ -9,6 +9,9 @@ import {
 } from "../../utils/mlDetail";
 import "./dashboardShell.css";
 
+// Sparse rankings below 0.4 are too weak to present as meaningful review prompts.
+const MIN_SPARSE_DIFFERENTIAL_SCORE = 0.4;
+
 export default function DashboardShell({
   patientData,
   prediction,
@@ -34,6 +37,11 @@ export default function DashboardShell({
   const disclaimer = getDisclaimer(prediction);
   const degraded = isDegraded(prediction);
   const differential = getSymptomDifferential(prediction);
+  const topDifferentialScore = Number(differential?.predictions?.[0]?.confidence);
+  const suppressDifferential =
+    differential?.sparseInput === true &&
+    Number.isFinite(topDifferentialScore) &&
+    topDifferentialScore < MIN_SPARSE_DIFFERENTIAL_SCORE;
 
   return (
     <div className="dashboard-shell">
@@ -97,43 +105,6 @@ export default function DashboardShell({
         })}
       </section>
 
-      {differential ? (
-        <section className="symptom-differential">
-          <h3>Symptom differential</h3>
-          {differential.rankingOnly ? (
-            <p className="differential-note">
-              Ranking only - these scores order plausible conditions and are not probabilities of
-              disease.
-            </p>
-          ) : null}
-          {differential.sparseInput ? (
-            <p className="differential-note">
-              Few symptoms matched the model vocabulary, so this ranking is weak evidence.
-            </p>
-          ) : null}
-          {differential.unmatchedSymptoms > 0 ? (
-            <p className="differential-note">
-              {differential.unmatchedSymptoms} submitted symptom
-              {differential.unmatchedSymptoms === 1 ? " was" : "s were"} not recognized by the
-              model.
-            </p>
-          ) : null}
-          <ol className="differential-list">
-            {differential.predictions.map((item) => (
-              <li key={item.condition}>
-                <span className="differential-condition">{item.condition}</span>
-                {Number.isFinite(Number(item.confidence)) ? (
-                  <span className="differential-score">
-                    {differential.rankingOnly ? "ranking score " : ""}
-                    {Number(item.confidence).toFixed(2)}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-
       <section className="visualization-slot" data-owner="shivangi">
         <p className="placeholder-note">
           Visualization components (trajectory chart, evidence panel) will be integrated here.
@@ -143,6 +114,55 @@ export default function DashboardShell({
       <section className="visualization-slot" data-owner="shivangi">
         <BaselineComparison current={baselineCurrent} baseline={baselineData} />
       </section>
+
+      {differential ? (
+        <details className="symptom-differential">
+          <summary>Symptom-based ranking (weak signal)</summary>
+          <div className="differential-content">
+            <p className="differential-note">
+              This rough review prompt comes from a model trained on a synthetic dataset; it is not
+              a diagnosis, and the lab-derived risk scores above are the stronger signal.
+            </p>
+            {differential.rankingOnly ? (
+              <p className="differential-note">
+                Ranking only - these scores order plausible conditions and are not probabilities of
+                disease.
+              </p>
+            ) : null}
+            {differential.sparseInput ? (
+              <p className="differential-note">
+                Few symptoms matched the model vocabulary, so this ranking is weak evidence.
+              </p>
+            ) : null}
+            {differential.unmatchedSymptoms > 0 ? (
+              <p className="differential-note">
+                {differential.unmatchedSymptoms} submitted symptom
+                {differential.unmatchedSymptoms === 1 ? " was" : "s were"} not recognized by the
+                model.
+              </p>
+            ) : null}
+            {suppressDifferential ? (
+              <p className="differential-empty">
+                Not enough symptom detail for a meaningful ranking.
+              </p>
+            ) : (
+              <ol className="differential-list">
+                {differential.predictions.map((item) => (
+                  <li key={item.condition}>
+                    <span className="differential-condition">{item.condition}</span>
+                    {Number.isFinite(Number(item.confidence)) ? (
+                      <span className="differential-score">
+                        {differential.rankingOnly ? "ranking score " : ""}
+                        {Number(item.confidence).toFixed(2)}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </details>
+      ) : null}
 
       {disclaimer ? <p className="dashboard-disclaimer">{disclaimer}</p> : null}
     </div>

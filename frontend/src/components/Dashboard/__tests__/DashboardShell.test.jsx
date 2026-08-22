@@ -133,6 +133,84 @@ describe("DashboardShell ml_detail caveats", () => {
   });
 });
 
+describe("DashboardShell symptom differential", () => {
+  function predictionWithDifferential({ sparseInput, confidence }) {
+    return {
+      ...basePrediction,
+      source: "model",
+      ml_detail: {
+        symptom_differential: {
+          available: true,
+          predictions: [{ condition: "Fungal infection", confidence }],
+          confidence_is_ranking_only: true,
+          sparse_input: sparseInput,
+          unmatched_symptoms: 1,
+        },
+      },
+    };
+  }
+
+  const baselineProps = {
+    baselineCurrent: { bmi: 29.4 },
+    baselineData: {
+      recordedAt: "2026-08-22",
+      risk_scores: {
+        bmi: { status: "unavailable", baseline: null, difference: null },
+      },
+    },
+  };
+
+  it("places a collapsed weak-signal disclosure below the baseline table", () => {
+    const dom = render({
+      prediction: predictionWithDifferential({ sparseInput: false, confidence: 0.32 }),
+      ...baselineProps,
+    });
+    const baselineTable = dom.querySelector(".baseline-table");
+    const differential = dom.querySelector(".symptom-differential");
+
+    expect(differential.tagName).toBe("DETAILS");
+    expect(differential.open).toBe(false);
+    expect(differential.querySelector("summary").textContent).toContain(
+      "Symptom-based ranking (weak signal)"
+    );
+    expect(
+      baselineTable.compareDocumentPosition(differential) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(differential.textContent).toContain("synthetic dataset");
+    expect(differential.textContent).toContain(
+      "lab-derived risk scores above are the stronger signal"
+    );
+  });
+
+  it("suppresses a sparse ranking when its top score is below the threshold", () => {
+    const dom = render({
+      prediction: predictionWithDifferential({ sparseInput: true, confidence: 0.39 }),
+    });
+    const differential = dom.querySelector(".symptom-differential");
+
+    expect(differential.textContent).toContain(
+      "Not enough symptom detail for a meaningful ranking."
+    );
+    expect(differential.querySelector(".differential-list")).toBeNull();
+    expect(differential.textContent).not.toContain("Fungal infection");
+  });
+
+  it.each([
+    ["non-sparse input", false, 0.12],
+    ["sparse input at or above the threshold", true, 0.4],
+  ])("renders the ranking for %s", (_label, sparseInput, confidence) => {
+    const dom = render({
+      prediction: predictionWithDifferential({ sparseInput, confidence }),
+    });
+    const differential = dom.querySelector(".symptom-differential");
+
+    expect(differential.querySelector(".differential-list")).not.toBeNull();
+    expect(differential.textContent).toContain("Fungal infection");
+    expect(differential.textContent).toContain("Ranking only");
+    expect(differential.textContent).toContain("was not recognized");
+  });
+});
+
 describe("DashboardShell without ml_detail", () => {
   it("renders risk scores without caveats and never prints undefined", () => {
     const dom = render({ prediction: { ...basePrediction, source: "mock" } });
