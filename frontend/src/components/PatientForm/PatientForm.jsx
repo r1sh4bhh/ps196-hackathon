@@ -28,8 +28,8 @@ const initialState = {
   },
 };
 
-export default function PatientForm({ onPredictionReceived }) {
-  const [formData, setFormData] = useState(initialState);
+export default function PatientForm({ onPredictionReceived, initialData }) {
+  const [formData, setFormData] = useState(() => mergeInitialData(initialData));
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -59,8 +59,7 @@ export default function PatientForm({ onPredictionReceived }) {
     setSubmitError(null);
 
     const normalized = normalizeFormData(formData);
-    const { isValid, errors: validationErrors } =
-      validatePatientData(normalized);
+    const { isValid, errors: validationErrors } = validatePatientData(normalized);
     setErrors(validationErrors);
 
     if (!isValid) {
@@ -84,8 +83,8 @@ export default function PatientForm({ onPredictionReceived }) {
       <header className="form-header">
         <h1>Patient Health Intake</h1>
         <p className="subtitle">
-          Enter patient demographics, vitals, symptoms, and lab results to
-          generate a disease risk prediction.
+          Enter patient demographics, vitals, symptoms, and lab results to generate a disease risk
+          prediction.
         </p>
       </header>
 
@@ -118,6 +117,38 @@ export default function PatientForm({ onPredictionReceived }) {
       </div>
     </form>
   );
+}
+
+function mergeInitialData(initialData) {
+  if (!initialData) {
+    return initialState;
+  }
+
+  return {
+    patientId: initialData.patientId ?? initialState.patientId,
+    age: nullToEmpty(initialData.age) ?? initialState.age,
+    vitals: mergeSection(initialState.vitals, initialData.vitals),
+    symptoms: initialData.symptoms ?? initialState.symptoms,
+    labs: mergeSection(initialState.labs, initialData.labs),
+  };
+}
+
+function mergeSection(defaults, overrides) {
+  if (!overrides) {
+    return defaults;
+  }
+
+  const merged = { ...defaults };
+  for (const key of Object.keys(defaults)) {
+    if (overrides[key] !== undefined) {
+      merged[key] = nullToEmpty(overrides[key]) ?? defaults[key];
+    }
+  }
+  return merged;
+}
+
+function nullToEmpty(value) {
+  return value === null || value === undefined ? "" : value;
 }
 
 function normalizeFormData(formData) {

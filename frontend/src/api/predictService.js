@@ -2,8 +2,7 @@ import { apiClient, ApiError } from "./client";
 import { getMockPrediction } from "../mocks/mockPrediction";
 
 const USE_MOCK =
-  import.meta.env.VITE_USE_MOCK_API === "true" ||
-  import.meta.env.VITE_USE_MOCK_API === undefined;
+  import.meta.env.VITE_USE_MOCK_API === "true" || import.meta.env.VITE_USE_MOCK_API === undefined;
 
 export async function submitPatientData(patientData) {
   if (USE_MOCK) {
