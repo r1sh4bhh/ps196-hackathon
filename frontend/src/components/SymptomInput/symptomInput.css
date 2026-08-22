@@ -81,7 +81,7 @@
   border-right: 2px solid var(--color-muted);
   border-bottom: 2px solid var(--color-muted);
   pointer-events: none;
-  transform: translateY(-70%) rotate(45deg);
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .symptom-input select {

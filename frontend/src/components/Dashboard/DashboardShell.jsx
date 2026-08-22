@@ -16,7 +16,8 @@ import "./dashboardShell.css";
 const MIN_SPARSE_DIFFERENTIAL_SCORE = 0.4;
 
 export function getRiskTier(band) {
-  const value = String(band || "").toLowerCase().replace(/_/g, " ").trim();
+  if (typeof band !== "string") return null;
+  const value = band.toLowerCase().replace(/_/g, " ").trim();
   return {
     severe: "severe",
     "very high": "severe",
