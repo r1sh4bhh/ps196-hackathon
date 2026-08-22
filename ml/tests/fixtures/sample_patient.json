@@ -1,0 +1,19 @@
+{
+  "patientId": "P001",
+  "age": 45,
+  "vitals": {
+    "systolic_bp": 140,
+    "diastolic_bp": 90,
+    "heart_rate": 85,
+    "temperature": 98.6,
+    "weight_kg": 85,
+    "height_cm": 175
+  },
+  "symptoms": ["fatigue", "excessive_hunger", "polyuria", "blurred_and_distorted_vision"],
+  "labs": {
+    "glucose": 145,
+    "cholesterol": 220,
+    "triglycerides": 150,
+    "hdl": 35
+  }
+}

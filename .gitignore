@@ -6,3 +6,18 @@ build/
 *.log
 .DS_Store
 coverage/
+
+# ML datasets are downloaded locally, never committed (see ml/data/README.md)
+ml/data/*.csv
+!ml/data/fixtures/*.csv
+
+# Trained model artifacts are generated locally by the training scripts
+ml/models/*.joblib
+ml/models/*.json
+!ml/models/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

@@ -1,0 +1,10 @@
+# Pinned so unpickling joblib model artifacts stays compatible across
+# machines. If you retrain, keep this file's scikit-learn version in sync
+# with whatever `python -c "import sklearn; print(sklearn.__version__)"`
+# reports after training - unpickling a model saved by a different
+# scikit-learn version can silently break or refuse to load.
+scikit-learn==1.9.0
+numpy==2.5.2
+pandas==3.0.5
+joblib==1.5.3
+pytest==9.1.1
