@@ -1,19 +1,103 @@
-import React, { useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { CANONICAL_SYMPTOMS, SYMPTOM_LABELS } from "../../constants/symptomVocabulary";
 import { symptomParser } from "../../utils/symptomParser/symptomParser";
 import "./symptomInput.css";
 
 const EMPTY_RESULT = { matched: [], negated: [], ambiguous: [], unmatched: [] };
+const PARSE_DELAY_MS = 350;
 
-export default function SymptomInput({ symptoms = [], onChange, parser = symptomParser }) {
+const SymptomInput = forwardRef(function SymptomInput(
+  { symptoms = [], onChange, parser = symptomParser },
+  ref
+) {
   const [description, setDescription] = useState("");
   const [parsed, setParsed] = useState(EMPTY_RESULT);
   const [manualPick, setManualPick] = useState("");
+  const descriptionRef = useRef("");
+  const symptomsRef = useRef(symptoms);
+  const onChangeRef = useRef(onChange);
+  const parserRef = useRef(parser);
+  const autoSymptomsRef = useRef(new Set());
+  const manualSymptomsRef = useRef(new Set(symptoms));
+  const removedSymptomsRef = useRef(new Set());
+  const timerRef = useRef();
+
+  symptomsRef.current = symptoms;
+  onChangeRef.current = onChange;
+  parserRef.current = parser;
+
+  const emit = useCallback((nextSymptoms) => {
+    if (
+      nextSymptoms.length !== symptomsRef.current.length ||
+      nextSymptoms.some((symptom, index) => symptom !== symptomsRef.current[index])
+    ) {
+      symptomsRef.current = nextSymptoms;
+      onChangeRef.current(nextSymptoms);
+    }
+    return nextSymptoms;
+  }, []);
+
+  const parseDescription = useCallback(
+    (text) => {
+      const result = text.trim() ? parserRef.current.parse(text) : EMPTY_RESULT;
+      const matchedSymptoms = new Set(result.matched.map((item) => item.symptom));
+
+      for (const symptom of removedSymptomsRef.current) {
+        if (!matchedSymptoms.has(symptom)) removedSymptomsRef.current.delete(symptom);
+      }
+
+      const retained = symptomsRef.current.filter(
+        (symptom) => !autoSymptomsRef.current.has(symptom) || manualSymptomsRef.current.has(symptom)
+      );
+      const autoSymptoms = new Set(
+        [...matchedSymptoms].filter((symptom) => !removedSymptomsRef.current.has(symptom))
+      );
+      const nextSymptoms = [...new Set([...retained, ...autoSymptoms])];
+
+      autoSymptomsRef.current = autoSymptoms;
+      setParsed(result);
+      return emit(nextSymptoms);
+    },
+    [emit]
+  );
+
+  useEffect(() => {
+    timerRef.current = setTimeout(() => parseDescription(descriptionRef.current), PARSE_DELAY_MS);
+    return () => clearTimeout(timerRef.current);
+  }, [description, parseDescription]);
+
+  const flush = useCallback(() => {
+    clearTimeout(timerRef.current);
+    return parseDescription(descriptionRef.current);
+  }, [parseDescription]);
+
+  useImperativeHandle(ref, () => ({ flush }), [flush]);
 
   const add = (symptom) => {
-    if (symptom && !symptoms.includes(symptom)) onChange([...symptoms, symptom]);
+    if (!symptom) return;
+    manualSymptomsRef.current.add(symptom);
+    removedSymptomsRef.current.delete(symptom);
+    emit(
+      symptomsRef.current.includes(symptom)
+        ? symptomsRef.current
+        : [...symptomsRef.current, symptom]
+    );
   };
-  const remove = (symptom) => onChange(symptoms.filter((item) => item !== symptom));
+  const remove = (symptom) => {
+    manualSymptomsRef.current.delete(symptom);
+    autoSymptomsRef.current.delete(symptom);
+    if (parsed.matched.some((item) => item.symptom === symptom)) {
+      removedSymptomsRef.current.add(symptom);
+    }
+    emit(symptomsRef.current.filter((item) => item !== symptom));
+  };
   const dismiss = (group, index) => {
     setParsed((previous) => ({
       ...previous,
@@ -29,21 +113,17 @@ export default function SymptomInput({ symptoms = [], onChange, parser = symptom
           value={description}
           rows={4}
           placeholder="For example: been really tired, peeing a lot, vision goes blurry"
-          onChange={(event) => setDescription(event.target.value)}
+          onChange={(event) => {
+            descriptionRef.current = event.target.value;
+            setDescription(event.target.value);
+          }}
+          onBlur={flush}
         />
       </label>
-      <button
-        type="button"
-        className="symptom-parse-button"
-        disabled={!description.trim()}
-        onClick={() => setParsed(parser.parse(description))}
-      >
-        Review what we understood
-      </button>
 
       {symptoms.length > 0 && (
         <div className="symptom-review-group">
-          <strong>Confirmed present</strong>
+          <strong>Understood as present</strong>
           <div className="chip-group">
             {symptoms.map((symptom) => (
               <button
@@ -55,29 +135,6 @@ export default function SymptomInput({ symptoms = [], onChange, parser = symptom
               >
                 {SYMPTOM_LABELS[symptom]} ×
               </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {parsed.matched.length > 0 && (
-        <div className="symptom-review-group">
-          <strong>Possible matches — add only if correct</strong>
-          <div className="chip-group">
-            {parsed.matched.map((item, index) => (
-              <span className="symptom-suggestion" key={`${item.symptom}-${index}`}>
-                <button type="button" className="chip" onClick={() => add(item.symptom)}>
-                  + {item.displayLabel}
-                </button>
-                <button
-                  type="button"
-                  className="symptom-dismiss"
-                  onClick={() => dismiss("matched", index)}
-                  aria-label={`Dismiss ${item.displayLabel}`}
-                >
-                  ×
-                </button>
-              </span>
             ))}
           </div>
         </div>
@@ -170,4 +227,6 @@ export default function SymptomInput({ symptoms = [], onChange, parser = symptom
       </details>
     </div>
   );
-}
+});
+
+export default SymptomInput;
