@@ -4,16 +4,27 @@ import DashboardShell from "./components/Dashboard/DashboardShell";
 import OnboardingWizard from "./components/Onboarding/OnboardingWizard";
 import { hasProfile, loadProfile, clearProfile } from "./storage/userProfileStore";
 import { buildPatientDataFromProfile } from "./storage/buildPatientData";
+import { demoPatientHistory } from "./mocks/demoPatientHistory";
+import { removeAssessment, saveAssessment } from "./storage/assessmentHistory";
 
 export default function App() {
   const [prediction, setPrediction] = useState(null);
   const [patientData, setPatientData] = useState(null);
+  const [baselines, setBaselines] = useState({});
+  const [baselineSince, setBaselineSince] = useState(null);
   const [profile, setProfile] = useState(() => loadProfile());
   const [view, setView] = useState(() => (hasProfile() ? "form" : "onboarding"));
 
-  const handlePredictionReceived = (data, resultPrediction) => {
+  const handlePredictionReceived = (
+    data,
+    resultPrediction,
+    resultBaselines,
+    resultBaselineSince
+  ) => {
     setPatientData(data);
     setPrediction(resultPrediction);
+    setBaselines(resultBaselines);
+    setBaselineSince(resultBaselineSince);
     setView("dashboard");
   };
 
@@ -29,6 +40,23 @@ export default function App() {
   };
 
   const initialFormData = buildPatientDataFromProfile(profile);
+  const baselineCurrent = Object.fromEntries(
+    Object.entries(baselines).map(([metric, result]) => [metric, result.current])
+  );
+  const baselineData = Object.keys(baselines).length
+    ? {
+        recordedAt: baselineSince ? baselineSince.slice(0, 10) : "first personal assessment",
+        risk_scores: baselines,
+      }
+    : null;
+
+  const handleLoadDemoHistory = () => {
+    demoPatientHistory.forEach(saveAssessment);
+  };
+
+  const handleClearDemoHistory = () => {
+    demoPatientHistory.forEach((assessment) => removeAssessment(assessment.id));
+  };
 
   return (
     <div className="app-shell">
@@ -38,6 +66,12 @@ export default function App() {
           <div className="profile-actions">
             <button type="button" className="btn-secondary" onClick={handleRedoOnboarding}>
               Edit profile / redo onboarding
+            </button>
+            <button type="button" className="btn-secondary" onClick={handleLoadDemoHistory}>
+              Load demo patient history (P001)
+            </button>
+            <button type="button" className="btn-secondary" onClick={handleClearDemoHistory}>
+              Clear demo patient history
             </button>
           </div>
           <PatientForm
@@ -50,6 +84,8 @@ export default function App() {
         <DashboardShell
           patientData={patientData}
           prediction={prediction}
+          baselineCurrent={baselineCurrent}
+          baselineData={baselineData}
           onBackToForm={() => setView("form")}
         />
       )}

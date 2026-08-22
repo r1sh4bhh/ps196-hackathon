@@ -1,7 +1,14 @@
 import React from "react";
+import BaselineComparison from "../BaselineComparison/BaselineComparison";
 import "./dashboardShell.css";
 
-export default function DashboardShell({ patientData, prediction, onBackToForm }) {
+export default function DashboardShell({
+  patientData,
+  prediction,
+  baselineCurrent,
+  baselineData,
+  onBackToForm,
+}) {
   if (!prediction) {
     return (
       <div className="dashboard-empty">
@@ -41,6 +48,10 @@ export default function DashboardShell({ patientData, prediction, onBackToForm }
         <p className="placeholder-note">
           Visualization components (trajectory chart, evidence panel) will be integrated here.
         </p>
+      </section>
+
+      <section className="visualization-slot" data-owner="shivangi">
+        <BaselineComparison current={baselineCurrent} baseline={baselineData} />
       </section>
     </div>
   );
