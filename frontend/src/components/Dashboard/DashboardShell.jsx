@@ -1,5 +1,12 @@
 import React from "react";
 import BaselineComparison from "../BaselineComparison/BaselineComparison";
+import SourceBadge from "../SourceBadge/SourceBadge";
+import {
+  getDisclaimer,
+  getRiskDetail,
+  getSymptomDifferential,
+  isDegraded,
+} from "../../utils/mlDetail";
 import "./dashboardShell.css";
 
 export default function DashboardShell({
@@ -20,14 +27,30 @@ export default function DashboardShell({
     );
   }
 
+  const riskScores =
+    prediction.risk_scores && typeof prediction.risk_scores === "object"
+      ? prediction.risk_scores
+      : {};
+  const disclaimer = getDisclaimer(prediction);
+  const degraded = isDegraded(prediction);
+  const differential = getSymptomDifferential(prediction);
+
   return (
     <div className="dashboard-shell">
       <header className="dashboard-header">
         <div>
           <h1>Risk Dashboard</h1>
+          <SourceBadge prediction={prediction} />
           <p className="subtitle">
-            Patient {patientData?.patientId} - Top risk: <strong>{prediction.top_disease}</strong> (
-            {Math.round(prediction.confidence * 100)}% confidence)
+            Patient {patientData?.patientId}
+            {prediction.top_disease ? (
+              <>
+                {" - "}Top risk: <strong>{prediction.top_disease}</strong>
+                {Number.isFinite(Number(prediction.confidence))
+                  ? ` (${Math.round(Number(prediction.confidence) * 100)}% confidence)`
+                  : ""}
+              </>
+            ) : null}
           </p>
         </div>
         <button className="btn-secondary" onClick={onBackToForm}>
@@ -35,14 +58,81 @@ export default function DashboardShell({
         </button>
       </header>
 
+      {degraded ? (
+        <p className="dashboard-notice">
+          One or more models were unavailable for this assessment, so the results below are
+          incomplete.
+        </p>
+      ) : null}
+
       <section className="summary-cards">
-        {Object.entries(prediction.risk_scores).map(([disease, score]) => (
-          <div className="summary-card" key={disease}>
-            <span className="disease-name">{disease.replace(/_/g, " ")}</span>
-            <span className="risk-value">{Math.round(score * 100)}%</span>
-          </div>
-        ))}
+        {Object.entries(riskScores).map(([disease, score]) => {
+          const detail = getRiskDetail(prediction, disease);
+
+          return (
+            <div className="summary-card" key={disease}>
+              <span className="disease-name">{disease.replace(/_/g, " ")}</span>
+              <span className="risk-value">{Math.round(score * 100)}%</span>
+              {detail?.band ? (
+                <span className="risk-band">Band: {detail.band.replace(/_/g, " ")}</span>
+              ) : null}
+              {detail?.provenance === "rule" ? (
+                <span className="risk-provenance">
+                  Rule-derived band{detail.description ? ` - ${detail.description}` : ""}
+                </span>
+              ) : null}
+              {detail?.provenance === "model" ? (
+                <span className="risk-provenance">Model-derived score</span>
+              ) : null}
+              {detail?.partialInput ? (
+                <span className="risk-caveat">
+                  Computed without all trained features
+                  {detail.missingKeyInputs.length
+                    ? `; missing: ${detail.missingKeyInputs.join(", ")}`
+                    : ""}
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
       </section>
+
+      {differential ? (
+        <section className="symptom-differential">
+          <h3>Symptom differential</h3>
+          {differential.rankingOnly ? (
+            <p className="differential-note">
+              Ranking only - these scores order plausible conditions and are not probabilities of
+              disease.
+            </p>
+          ) : null}
+          {differential.sparseInput ? (
+            <p className="differential-note">
+              Few symptoms matched the model vocabulary, so this ranking is weak evidence.
+            </p>
+          ) : null}
+          {differential.unmatchedSymptoms > 0 ? (
+            <p className="differential-note">
+              {differential.unmatchedSymptoms} submitted symptom
+              {differential.unmatchedSymptoms === 1 ? " was" : "s were"} not recognised by the
+              model.
+            </p>
+          ) : null}
+          <ol className="differential-list">
+            {differential.predictions.map((item) => (
+              <li key={item.condition}>
+                <span className="differential-condition">{item.condition}</span>
+                {Number.isFinite(Number(item.confidence)) ? (
+                  <span className="differential-score">
+                    {differential.rankingOnly ? "ranking score " : ""}
+                    {Number(item.confidence).toFixed(2)}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <section className="visualization-slot" data-owner="shivangi">
         <p className="placeholder-note">
@@ -53,6 +143,8 @@ export default function DashboardShell({
       <section className="visualization-slot" data-owner="shivangi">
         <BaselineComparison current={baselineCurrent} baseline={baselineData} />
       </section>
+
+      {disclaimer ? <p className="dashboard-disclaimer">{disclaimer}</p> : null}
     </div>
   );
 }

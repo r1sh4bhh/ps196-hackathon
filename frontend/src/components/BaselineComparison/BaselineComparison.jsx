@@ -1,5 +1,6 @@
 import React from "react";
 import { BASELINE_METRICS } from "../../utils/baseline";
+import { formatMeasurement as formatValueWithUnit } from "../../utils/format";
 import "./baselineComparison.css";
 
 export default function BaselineComparison({ current, baseline }) {
@@ -75,9 +76,9 @@ function formatDiseaseName(disease) {
   return disease.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+// Display only: values such as a computed BMI arrive at full float precision
+// (29.069767441860467) and are rounded here, never upstream, so comparisons
+// and deltas keep using the exact numbers.
 function formatMeasurement(value, metric) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
-  return `${value} ${BASELINE_METRICS[metric]?.unit || ""}`.trim();
+  return formatValueWithUnit(value, BASELINE_METRICS[metric]?.unit);
 }

@@ -1,0 +1,30 @@
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.source-badge-model {
+  background: #f1f5f4;
+  border: 1px solid #e1e6e4;
+  color: #6b7c78;
+  font-weight: 500;
+}
+
+.source-badge-mock {
+  background: #fdecea;
+  border: 1px solid #e08e86;
+  color: #8c2f22;
+}
+
+.source-badge-reason {
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.85;
+}
