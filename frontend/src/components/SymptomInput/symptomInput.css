@@ -1,23 +1,25 @@
 .symptom-input {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .symptom-description {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  color: #6b7c78;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
 }
 
 .symptom-description textarea {
   box-sizing: border-box;
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #e1e6e4;
-  border-radius: 10px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
   font: inherit;
   resize: vertical;
 }
@@ -25,12 +27,11 @@
 .symptom-review-row button,
 .symptom-manual-pick button {
   align-self: flex-start;
-  padding: 8px 12px;
-  border: 1px solid #2f6f5e;
-  border-radius: 8px;
-  background: #fff;
-  color: #2f6f5e;
-  cursor: pointer;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-primary-strong);
 }
 
 .symptom-manual-pick button:disabled {
@@ -42,14 +43,14 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: #44534f;
-  font-size: 13px;
+  color: var(--color-text);
+  font-size: var(--text-sm);
 }
 
 .symptom-negated {
-  padding: 10px;
-  border-radius: 8px;
-  background: #eef2f1;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
 }
 
 .symptom-review-row,
@@ -57,18 +58,35 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .symptom-manual-pick select {
   flex: 1;
+  min-width: 0;
+}
+
+.symptom-input select {
+  appearance: none;
+  min-height: 2.75rem;
+  padding: var(--space-2) 2.5rem var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2352645e' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right var(--space-3) center;
+  color: var(--color-text);
+}
+
+.symptom-input select:hover {
+  border-color: var(--color-primary);
 }
 
 .symptom-unmatched {
-  padding: 10px;
-  border: 1px solid #f0c14b;
-  border-radius: 8px;
-  background: #fffaf0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
 }
 
 .symptom-unmatched ul {
@@ -78,6 +96,5 @@
 
 .symptom-checkboxes summary {
   margin-bottom: 10px;
-  color: #2f6f5e;
-  cursor: pointer;
+  color: var(--color-primary-strong);
 }

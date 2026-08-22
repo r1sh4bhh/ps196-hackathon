@@ -1,7 +1,7 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import DashboardShell from "../DashboardShell";
+import DashboardShell, { getRiskTier } from "../DashboardShell";
 
 let container;
 let root;
@@ -105,6 +105,35 @@ describe("DashboardShell ml_detail caveats", () => {
 
     expect(cardiac.textContent).toContain("Computed without all trained features");
     expect(cardiac.textContent).toContain("ca, thal, slope, oldpeak");
+  });
+
+  describe("DashboardShell risk tiers", () => {
+    it.each([
+      ["low", "low"],
+      ["elevated", "moderate"],
+      ["high", "high"],
+      ["stage_2", "severe"],
+    ])("derives %s from the existing band value", (band, expectedTier) => {
+      expect(getRiskTier(band)).toBe(expectedTier);
+    });
+
+    it("uses the band-derived tier class while retaining the band label", () => {
+      const dom = render({
+        prediction: {
+          ...basePrediction,
+          source: "model",
+          ml_detail: {
+            diabetes_risk: { available: true, source: "model", risk_band: "high" },
+          },
+        },
+      });
+      const diabetes = [...dom.querySelectorAll(".summary-card")].find((card) =>
+        card.textContent.includes("diabetes")
+      );
+
+      expect(diabetes.className).toContain("risk-tier-high");
+      expect(diabetes.textContent).toContain("Band: high");
+    });
   });
 
   it("shows risk bands and distinguishes rule-derived bands", () => {

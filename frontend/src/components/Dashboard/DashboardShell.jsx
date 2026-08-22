@@ -1,6 +1,9 @@
 import React from "react";
 import BaselineComparison from "../BaselineComparison/BaselineComparison";
 import SourceBadge from "../SourceBadge/SourceBadge";
+import RiskTrajectory from "../RiskTrajectory/RiskTrajectory";
+import { EvidenceList } from "../EvidenceCard/EvidenceCard";
+import NextTestCard from "../NextTestCard/NextTestCard";
 import {
   getDisclaimer,
   getRiskDetail,
@@ -11,6 +14,16 @@ import "./dashboardShell.css";
 
 // Sparse rankings below 0.4 are too weak to present as meaningful review prompts.
 const MIN_SPARSE_DIFFERENTIAL_SCORE = 0.4;
+
+export function getRiskTier(band) {
+  const value = String(band || "").toLowerCase().replace(/_/g, " ");
+  if (value.includes("severe") || value.includes("stage 2")) return "severe";
+  if (value.includes("high")) return "high";
+  if (value.includes("moderate") || value.includes("elevated") || value.includes("stage 1")) {
+    return "moderate";
+  }
+  return "low";
+}
 
 export default function DashboardShell({
   patientData,
@@ -76,9 +89,10 @@ export default function DashboardShell({
       <section className="summary-cards">
         {Object.entries(riskScores).map(([disease, score]) => {
           const detail = getRiskDetail(prediction, disease);
+          const tier = getRiskTier(detail?.band);
 
           return (
-            <div className="summary-card" key={disease}>
+            <div className={`summary-card risk-tier-${tier}`} key={disease}>
               <span className="disease-name">{disease.replace(/_/g, " ")}</span>
               <span className="risk-value">{Math.round(score * 100)}%</span>
               {detail?.band ? (
@@ -105,13 +119,23 @@ export default function DashboardShell({
         })}
       </section>
 
-      <section className="visualization-slot" data-owner="shivangi">
-        <p className="placeholder-note">
-          Visualization components (trajectory chart, evidence panel) will be integrated here.
-        </p>
+      <section className="dashboard-insights" aria-label="Assessment insights">
+        {Array.isArray(prediction.trajectory) && prediction.trajectory.length > 0 ? (
+          <RiskTrajectory trajectory={prediction.trajectory} />
+        ) : (
+          <div className="trajectory-empty">
+            Risk trajectory will appear after more visits are recorded.
+          </div>
+        )}
+        {Array.isArray(prediction.evidence) && prediction.evidence.length > 0 ? (
+          <div className="evidence-stack">
+            <NextTestCard evidenceItems={prediction.evidence} />
+            <EvidenceList evidenceItems={prediction.evidence} />
+          </div>
+        ) : null}
       </section>
 
-      <section className="visualization-slot" data-owner="shivangi">
+      <section className="baseline-section">
         <BaselineComparison current={baselineCurrent} baseline={baselineData} />
       </section>
 

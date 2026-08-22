@@ -1,26 +1,130 @@
+@import "./tokens.css";
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: #f7f9f8;
-  color: #1c2b27;
+  min-width: 320px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  transition: border-color var(--transition), background-color var(--transition), color var(--transition),
+    box-shadow var(--transition), transform var(--transition);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
 }
 
 .app-shell {
   min-height: 100vh;
+  padding-top: var(--space-3);
 }
 
 .profile-actions {
   max-width: 640px;
-  margin: 16px auto 0;
-  padding: 0 24px;
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.app-theme-toggle {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 var(--space-5);
   display: flex;
   justify-content: flex-end;
+}
+
+.theme-toggle {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-toggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary-strong);
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+}
+
+.btn-primary {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-strong);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.btn-secondary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary-strong);
+}
+
+.btn-ghost {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-primary-strong);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
 }

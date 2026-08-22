@@ -167,4 +167,14 @@ describe("SymptomInput automatic parsing", () => {
     expect(container.textContent).toContain("Chest pain");
     expect(container.textContent).not.toContain("Passing Urine Very Often");
   });
+
+  it("renders manual dropdown options in sentence case without changing their values", () => {
+    act(() => root.render(<Harness />));
+
+    const option = [...container.querySelector(".symptom-manual-pick select").options].find(
+      (item) => item.value === "polyuria"
+    );
+    expect(option.textContent).toBe("Passing urine very often");
+    expect(option.value).toBe("polyuria");
+  });
 });

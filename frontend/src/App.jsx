@@ -6,6 +6,7 @@ import { hasProfile, loadProfile, clearProfile } from "./storage/userProfileStor
 import { buildPatientDataFromProfile } from "./storage/buildPatientData";
 import { demoPatientHistory } from "./mocks/demoPatientHistory";
 import { removeAssessment, saveAssessment } from "./storage/assessmentHistory";
+import ThemeToggle from "./components/ThemeToggle";
 
 export default function App() {
   const [prediction, setPrediction] = useState(null);
@@ -60,6 +61,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <div className="app-theme-toggle">
+        <ThemeToggle />
+      </div>
       {view === "onboarding" && <OnboardingWizard onComplete={handleOnboardingComplete} />}
       {view === "form" && (
         <>
