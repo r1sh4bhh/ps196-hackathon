@@ -81,18 +81,29 @@
   border: 1px solid #e1e6e4;
   border-radius: 12px;
   padding: 16px;
-  margin-bottom: 24px;
+  margin-top: 24px;
 }
 
-.symptom-differential h3 {
-  margin: 0 0 8px;
+.symptom-differential summary {
+  cursor: pointer;
+  font-weight: 600;
   font-size: 15px;
+}
+
+.differential-content {
+  margin-top: 12px;
 }
 
 .differential-note {
   margin: 0 0 6px;
   font-size: 12px;
   color: #6b7c78;
+}
+
+.differential-empty {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #234f42;
 }
 
 .differential-list {
