@@ -107,7 +107,11 @@ def _risk_from_model(model: Any, vector: list[float]) -> float | None:
     x = np.array(vector, dtype=float).reshape(1, -1)
     if hasattr(model, "predict_proba"):
         classes = list(model.classes_)
-        positive_index = classes.index(1) if 1 in classes else -1
+        if 1 not in classes:
+            # Positive class not present in this model's encoding - refuse to
+            # guess rather than silently returning the wrong class's score.
+            return None
+        positive_index = classes.index(1)
         return round(float(model.predict_proba(x)[0][positive_index]), 4)
     return round(float(model.predict(x)[0]), 4)
 

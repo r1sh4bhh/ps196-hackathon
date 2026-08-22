@@ -76,15 +76,32 @@ def evaluate_classifier(
 
     Returns:
         A JSON-serializable dict of computed metrics.
+
+    Side effects:
+        ``estimator`` is fitted on the full dataset (``x``, ``y``) as part of
+        computing feature importances, and is left in that fitted state
+        after this function returns. Callers do not need to call
+        ``estimator.fit(...)`` again afterwards.
     """
     x = np.asarray(x)
     y = np.asarray(y)
     n_splits = n_splits or safe_n_splits(y)
     classes = np.unique(y)
     is_binary = len(classes) == 2
+    has_proba = hasattr(estimator, "predict_proba")
 
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
-    y_pred = cross_val_predict(estimator, x, y, cv=skf)
+
+    if is_binary and has_proba:
+        # A single predict_proba pass covers both the class predictions
+        # (via argmax) and the positive-class scores needed for ROC-AUC /
+        # calibration, avoiding a second full CV loop over the same folds.
+        # `classes` (np.unique(y)) is already sorted ascending, matching the
+        # `classes_` ordering scikit-learn classifiers use internally.
+        proba = cross_val_predict(estimator, x, y, cv=skf, method="predict_proba")
+        y_pred = classes[np.argmax(proba, axis=1)]
+    else:
+        y_pred = cross_val_predict(estimator, x, y, cv=skf)
 
     metrics: dict[str, Any] = {
         "cv_folds": n_splits,
@@ -105,9 +122,8 @@ def evaluate_classifier(
 
     fitted = estimator.fit(x, y)
 
-    if is_binary and hasattr(estimator, "predict_proba"):
+    if is_binary and has_proba:
         positive_label = binary_positive_label if binary_positive_label is not None else classes[1]
-        proba = cross_val_predict(estimator, x, y, cv=skf, method="predict_proba")
         positive_index = list(fitted.classes_).index(positive_label)
         y_score = proba[:, positive_index]
         y_true_binary = (y == positive_label).astype(int)

@@ -17,7 +17,13 @@ backend) can never mistake a deterministic rule for an ML prediction.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from inference.preprocessing import compute_bmi
 
 
 def classify_hypertension(systolic: float, diastolic: float) -> dict[str, Any]:
@@ -91,22 +97,6 @@ def classify_bmi(bmi: float) -> dict[str, Any]:
         "criteria": "WHO/CDC adult BMI categories (obese >= 30.0)",
         "source": "rule",
     }
-
-
-def compute_bmi(weight_kg: float, height_cm: float) -> float:
-    """Compute BMI = weight(kg) / height(m)^2, defensively.
-
-    Args:
-        weight_kg: Weight in kilograms.
-        height_cm: Height in centimeters.
-
-    Returns:
-        BMI rounded to 1 decimal place, or ``0.0`` if height is not positive.
-    """
-    if not height_cm or height_cm <= 0:
-        return 0.0
-    height_m = height_cm / 100.0
-    return round(weight_kg / (height_m**2), 1)
 
 
 def evaluate_clinical_rules(patient_data: dict[str, Any]) -> dict[str, Any]:

@@ -132,7 +132,8 @@ def main() -> None:
     models_dir = ml_root / "models"
     models_dir.mkdir(parents=True, exist_ok=True)
 
-    model.fit(x.values, y_encoded)
+    # evaluate_classifier() already fits `model` on the full dataset as part
+    # of computing feature importances; no need to fit again here.
     joblib.dump(model, models_dir / "symptom_model.joblib")
     joblib.dump(encoder, models_dir / "symptom_label_encoder.joblib")
     write_metrics(metrics, models_dir / "symptom_model_metrics.json")
