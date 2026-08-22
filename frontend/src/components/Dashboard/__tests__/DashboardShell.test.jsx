@@ -118,6 +118,23 @@ describe("DashboardShell ml_detail caveats", () => {
     );
   });
 
+  it("adds carried-forward lab age to the existing caveat presentation", () => {
+    const dom = render({
+      prediction,
+      reusedLabs: {
+        glucose: {
+          value: 101,
+          recordedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          isStale: false,
+        },
+      },
+    });
+    const firstCardCaveat = dom.querySelector(".summary-card .risk-caveat");
+
+    expect(firstCardCaveat.textContent).toContain("Carried forward: Glucose 101 mg/dL");
+    expect(firstCardCaveat.textContent).toContain("(2 days ago)");
+  });
+
   describe("DashboardShell risk tiers", () => {
     it.each([
       ["low", "low"],

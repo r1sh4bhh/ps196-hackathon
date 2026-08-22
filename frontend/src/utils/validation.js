@@ -34,16 +34,16 @@ export function validatePatientData(patientData) {
   }
 
   const labs = patientData.labs || {};
-  if (!isInRange(labs.glucose, 40, 600)) {
+  if (hasValue(labs.glucose) && !isInRange(labs.glucose, 40, 600)) {
     errors.glucose = "Glucose out of range.";
   }
-  if (!isInRange(labs.cholesterol, 50, 500)) {
+  if (hasValue(labs.cholesterol) && !isInRange(labs.cholesterol, 50, 500)) {
     errors.cholesterol = "Cholesterol out of range.";
   }
-  if (!isInRange(labs.triglycerides, 30, 1000)) {
+  if (hasValue(labs.triglycerides) && !isInRange(labs.triglycerides, 30, 1000)) {
     errors.triglycerides = "Triglycerides out of range.";
   }
-  if (!isInRange(labs.hdl, 10, 150)) {
+  if (hasValue(labs.hdl) && !isInRange(labs.hdl, 10, 150)) {
     errors.hdl = "HDL out of range.";
   }
 
@@ -52,4 +52,8 @@ export function validatePatientData(patientData) {
 
 function isInRange(value, min, max) {
   return typeof value === "number" && value >= min && value <= max;
+}
+
+function hasValue(value) {
+  return value !== undefined && value !== null && value !== "";
 }

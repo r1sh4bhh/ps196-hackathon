@@ -11,6 +11,7 @@ import {
   clearProfile,
   listProfiles,
   setActivePatientId,
+  loadLabResults,
 } from "./storage/userProfileStore";
 import { getRole, setRole, ROLES } from "./storage/roleStore";
 import { buildPatientDataFromProfile } from "./storage/buildPatientData";
@@ -43,6 +44,7 @@ export default function App() {
   const [baselines, setBaselines] = useState({});
   const [baselineSince, setBaselineSince] = useState(null);
   const [trajectory, setTrajectory] = useState([]);
+  const [reusedLabs, setReusedLabs] = useState({});
   const [role, setRoleValue] = useState(() => getRole());
   const [profile, setProfile] = useState(() => loadProfile());
   const [view, setView] = useState(() => computeInitialView(getRole(), loadProfile()));
@@ -60,13 +62,15 @@ export default function App() {
     resultPrediction,
     resultBaselines,
     resultBaselineSince,
-    resultTrajectory
+    resultTrajectory,
+    resultReusedLabs
   ) => {
     setPatientData(data);
     setPrediction(resultPrediction);
     setBaselines(resultBaselines);
     setBaselineSince(resultBaselineSince);
     setTrajectory(resultTrajectory || []);
+    setReusedLabs(resultReusedLabs || {});
     setView("dashboard");
   };
 
@@ -99,8 +103,13 @@ export default function App() {
     setView("clinician-list");
   };
 
-  const initialFormData = buildPatientDataFromProfile(profile);
   const isReturningVisit = hasReturnVisitHistory(profile?.patientId);
+  const profilePatientData = buildPatientDataFromProfile(profile);
+  const initialFormData =
+    isReturningVisit && profilePatientData
+      ? { ...profilePatientData, labs: {} }
+      : profilePatientData;
+  const storedLabs = isReturningVisit ? loadLabResults(profile?.patientId) : {};
   // Re-read the saved-people list only when the active profile changes (add,
   // switch, onboarding, or redo), rather than on every render. `profile` is
   // used only as a cache-invalidation signal here, not read directly.
@@ -183,6 +192,7 @@ export default function App() {
             key={profile?.patientId || "no-profile"}
             onPredictionReceived={handlePredictionReceived}
             initialData={initialFormData}
+            storedLabs={storedLabs}
             mode={isReturningVisit ? "short" : "full"}
           />
         </>
@@ -202,6 +212,7 @@ export default function App() {
             baselineCurrent={baselineCurrent}
             baselineData={baselineData}
             trajectory={trajectory}
+            reusedLabs={reusedLabs}
             onBackToForm={() => setView("form")}
           />
         </>

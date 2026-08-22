@@ -12,6 +12,8 @@ import {
   listProfiles,
   getActivePatientId,
   setActivePatientId,
+  loadLabResults,
+  saveLabResults,
 } from "../userProfileStore";
 
 describe("userProfileStore", () => {
@@ -93,6 +95,43 @@ describe("userProfileStore", () => {
 
     // Switching back must not have mutated the other person's stored data.
     expect(loadProfile("P002").questionnaire.age).toBe(55);
+  });
+
+  it("stores timestamped labs per patient and preserves a reused measurement date", () => {
+    saveProfile({ patientId: "P001" });
+    saveProfile({ patientId: "P002" });
+
+    saveLabResults(
+      "P001",
+      { glucose: 101, cholesterol: "", hdl: undefined },
+      { recordedAt: "2026-08-14T10:00:00.000Z" }
+    );
+    saveLabResults(
+      "P002",
+      { glucose: 140 },
+      { recordedAt: "2026-08-20T10:00:00.000Z" }
+    );
+    saveLabResults(
+      "P001",
+      { glucose: 101 },
+      {
+        recordedAt: "2026-08-22T10:00:00.000Z",
+        reusedLabs: { glucose: true },
+      }
+    );
+
+    expect(loadLabResults("P001")).toEqual({
+      glucose: { value: 101, recordedAt: "2026-08-14T10:00:00.000Z" },
+    });
+    expect(loadLabResults("P002")).toEqual({
+      glucose: { value: 140, recordedAt: "2026-08-20T10:00:00.000Z" },
+    });
+  });
+
+  it("degrades legacy profiles without lab history to no stored labs", () => {
+    saveProfile({ patientId: "legacy", questionnaire: { age: 60 } });
+
+    expect(loadLabResults("legacy")).toEqual({});
   });
 
   it("does not switch the active person to one that was never saved", () => {

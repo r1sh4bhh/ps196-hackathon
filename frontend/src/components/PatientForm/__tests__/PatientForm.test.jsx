@@ -29,6 +29,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   await act(async () => root.unmount());
+  vi.useRealTimers();
   container.remove();
   localStorage.clear();
 });
@@ -138,5 +139,67 @@ describe("PatientForm return-visit short flow", () => {
     expect(container.textContent).toContain("Patient ID");
     const labels = [...container.querySelectorAll("label")].map((label) => label.textContent);
     expect(labels.some((text) => text.includes("Height"))).toBe(true);
+  });
+
+  it("prefills a fresh lab, keeps a stale lab empty, and shows both ages", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-22T12:00:00.000Z"));
+    render({
+      initialData: { ...stableInitialData, labs: {} },
+      mode: "short",
+      storedLabs: {
+        glucose: { value: 101, recordedAt: "2026-08-20T12:00:00.000Z" },
+        cholesterol: { value: 195, recordedAt: "2025-08-21T12:00:00.000Z" },
+      },
+    });
+
+    const glucose = [...container.querySelectorAll("label")].find((label) =>
+      label.textContent.includes("Glucose")
+    );
+    const cholesterol = [...container.querySelectorAll("label")].find((label) =>
+      label.textContent.includes("Total Cholesterol")
+    );
+
+    expect(glucose.querySelector("input").value).toBe("101");
+    expect(glucose.querySelector("input").className).toContain("lab-input-carried");
+    expect(glucose.textContent).toContain("from 20 Aug (2 days ago)");
+    expect(cholesterol.querySelector("input").value).toBe("");
+    expect(cholesterol.textContent).toContain("from 21 Aug (366 days ago)");
+    expect(cholesterol.textContent).toContain("stale");
+  });
+
+  it("submits an explicitly reused stale value in the normal lab payload shape", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-22T12:00:00.000Z"));
+    render({
+      initialData: { ...stableInitialData, labs: {} },
+      mode: "short",
+      storedLabs: {
+        cholesterol: { value: 195, recordedAt: "2025-08-21T12:00:00.000Z" },
+      },
+    });
+
+    const cholesterol = [...container.querySelectorAll("label")].find((label) =>
+      label.textContent.includes("Total Cholesterol")
+    );
+    act(() => cholesterol.querySelector(".lab-reuse").click());
+    expect(cholesterol.querySelector("input").value).toBe("195");
+
+    fillRequiredVitalsAndLabs();
+    await act(async () => {
+      container
+        .querySelector("form")
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+    });
+
+    const submitted = submitPatientData.mock.calls[0][0];
+    expect(Object.keys(submitted.labs)).toEqual([
+      "glucose",
+      "cholesterol",
+      "triglycerides",
+      "hdl",
+    ]);
+    expect(submitted.labs.cholesterol).toBe(195);
   });
 });
