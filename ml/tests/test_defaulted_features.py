@@ -89,6 +89,10 @@ class DefaultedFeatureTests(unittest.TestCase):
         result = self._predict_heart(patient)
 
         self.assertEqual(
+            result["defaulted_features"],
+            ["cp", "chol", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal"],
+        )
+        self.assertEqual(
             result["missing_key_inputs"],
             [
                 "cholesterol",

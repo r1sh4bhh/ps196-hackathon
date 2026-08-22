@@ -198,6 +198,8 @@ HEART_DEFAULTS: dict[str, float] = {
     "thal": 3.0,  # normal, in the 3/6/7 encoding
 }
 
+_DEFAULT_DIABETES_PEDIGREE = 0.3725
+
 
 def normalise_columns(frame: pd.DataFrame) -> pd.DataFrame:
     """Return a copy of ``frame`` with canonical lowercase column names."""
@@ -458,7 +460,11 @@ def vector_and_defaulted_features_from_patient_diabetes(
             defaulted_features.append(name)
             value = medians.get(
                 name,
-                0.3725 if name == "diabetes_pedigree_function" else 0.0,
+                (
+                    _DEFAULT_DIABETES_PEDIGREE
+                    if name == "diabetes_pedigree_function"
+                    else 0.0
+                ),
             )
         try:
             numeric_value = float(value)
@@ -471,7 +477,11 @@ def vector_and_defaulted_features_from_patient_diabetes(
                 float(
                     medians.get(
                         name,
-                        0.3725 if name == "diabetes_pedigree_function" else 0.0,
+                        (
+                            _DEFAULT_DIABETES_PEDIGREE
+                            if name == "diabetes_pedigree_function"
+                            else 0.0
+                        ),
                     )
                 )
             )

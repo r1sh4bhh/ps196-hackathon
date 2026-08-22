@@ -254,6 +254,7 @@ def _predict_heart(patient: dict[str, Any]) -> dict[str, Any]:
             # defaults, keeping this disclosure aligned with the model vector.
             "partial_input": True,
             "missing_key_inputs": list(dict.fromkeys(missing + defaulted_features)),
+            "defaulted_features": defaulted_features,
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")
