@@ -22,7 +22,6 @@
   resize: vertical;
 }
 
-.symptom-parse-button,
 .symptom-review-row button,
 .symptom-manual-pick button {
   align-self: flex-start;
@@ -34,7 +33,6 @@
   cursor: pointer;
 }
 
-.symptom-parse-button:disabled,
 .symptom-manual-pick button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -46,18 +44,6 @@
   gap: 8px;
   color: #44534f;
   font-size: 13px;
-}
-
-.symptom-suggestion {
-  display: inline-flex;
-  align-items: center;
-}
-
-.symptom-dismiss {
-  border: 0;
-  background: transparent;
-  color: #6b7c78;
-  cursor: pointer;
 }
 
 .symptom-negated {

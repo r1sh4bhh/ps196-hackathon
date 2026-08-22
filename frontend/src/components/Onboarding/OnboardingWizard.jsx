@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import QuestionnaireStep from "./QuestionnaireStep";
 import ReportUpload from "./ReportUpload";
 import ReviewStep from "./ReviewStep";
@@ -19,6 +19,7 @@ export default function OnboardingWizard({ onComplete }) {
   const [manualLabs, setManualLabs] = useState(() => draft?.manualLabs || {});
   const [observations, setObservations] = useState(() => draft?.observations || []);
   const [errors, setErrors] = useState({});
+  const symptomInputRef = useRef(null);
 
   useEffect(() => {
     saveDraft({ stepIndex, answers, manualLabs, observations });
@@ -28,7 +29,12 @@ export default function OnboardingWizard({ onComplete }) {
 
   const goNext = () => {
     if (currentStep === "Questionnaire") {
-      const { isValid, errors: validationErrors } = validateQuestionnaire(answers);
+      const flushedSymptoms = symptomInputRef.current?.flush();
+      const nextAnswers = flushedSymptoms
+        ? { ...answers, baseline_symptoms: flushedSymptoms }
+        : answers;
+      if (flushedSymptoms) setAnswers(nextAnswers);
+      const { isValid, errors: validationErrors } = validateQuestionnaire(nextAnswers);
       setErrors(validationErrors);
       if (!isValid) {
         return;
@@ -87,7 +93,12 @@ export default function OnboardingWizard({ onComplete }) {
       )}
 
       {currentStep === "Questionnaire" && (
-        <QuestionnaireStep answers={answers} errors={errors} onChange={setAnswers} />
+        <QuestionnaireStep
+          answers={answers}
+          errors={errors}
+          onChange={setAnswers}
+          symptomInputRef={symptomInputRef}
+        />
       )}
 
       {currentStep === "Reports" && (

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import DemographicFields from "./DemographicFields";
 import VitalFields from "./VitalFields";
 import SymptomFields from "./SymptomFields";
@@ -34,6 +34,7 @@ export default function PatientForm({ onPredictionReceived, initialData }) {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const symptomInputRef = useRef(null);
 
   const updateField = (section, field, value) => {
     setFormData((previous) => {
@@ -59,7 +60,8 @@ export default function PatientForm({ onPredictionReceived, initialData }) {
     event.preventDefault();
     setSubmitError(null);
 
-    const normalized = normalizeFormData(formData);
+    const symptoms = symptomInputRef.current?.flush() ?? formData.symptoms;
+    const normalized = normalizeFormData({ ...formData, symptoms });
     const { isValid, errors: validationErrors } = validatePatientData(normalized);
     setErrors(validationErrors);
 
@@ -108,7 +110,11 @@ export default function PatientForm({ onPredictionReceived, initialData }) {
         onChange={(field, value) => updateField("vitals", field, value)}
       />
 
-      <SymptomFields symptoms={formData.symptoms} onChange={updateSymptoms} />
+      <SymptomFields
+        symptoms={formData.symptoms}
+        onChange={updateSymptoms}
+        symptomInputRef={symptomInputRef}
+      />
 
       <LabFields
         labs={formData.labs}

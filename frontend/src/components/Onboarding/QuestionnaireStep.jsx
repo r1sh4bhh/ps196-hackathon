@@ -7,14 +7,18 @@ import {
 } from "../../constants/questionnaire";
 import SymptomInput from "../SymptomInput/SymptomInput";
 
-function QuestionField({ question, value, error, onChange }) {
+function QuestionField({ question, value, error, onChange, symptomInputRef }) {
   const handleChange = (nextValue) => onChange(question.id, nextValue);
 
   if (question.id === "baseline_symptoms") {
     return (
       <fieldset className="field">
         <legend>{question.label}</legend>
-        <SymptomInput symptoms={Array.isArray(value) ? value : []} onChange={handleChange} />
+        <SymptomInput
+          ref={symptomInputRef}
+          symptoms={Array.isArray(value) ? value : []}
+          onChange={handleChange}
+        />
       </fieldset>
     );
   }
@@ -109,7 +113,7 @@ function QuestionField({ question, value, error, onChange }) {
   );
 }
 
-export default function QuestionnaireStep({ answers, errors, onChange }) {
+export default function QuestionnaireStep({ answers, errors, onChange, symptomInputRef }) {
   const setAnswer = (id, value) => {
     onChange({ ...answers, [id]: value });
   };
@@ -137,6 +141,7 @@ export default function QuestionnaireStep({ answers, errors, onChange }) {
                 value={answers[question.id]}
                 error={errors?.[question.id]}
                 onChange={setAnswer}
+                symptomInputRef={symptomInputRef}
               />
             ))}
             {section === "Demographics" && bmi !== null && (
