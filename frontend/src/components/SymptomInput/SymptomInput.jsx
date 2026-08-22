@@ -159,6 +159,7 @@ const SymptomInput = forwardRef(function SymptomInput(
           <strong>What did “{item.matchedText}” mean?</strong>
           <span className="select-control">
             <select
+              className="form-control"
               defaultValue=""
               onChange={(event) => {
                 add(event.target.value);
@@ -191,7 +192,11 @@ const SymptomInput = forwardRef(function SymptomInput(
 
       <div className="symptom-manual-pick">
         <span className="select-control">
-          <select value={manualPick} onChange={(event) => setManualPick(event.target.value)}>
+          <select
+            className="form-control"
+            value={manualPick}
+            onChange={(event) => setManualPick(event.target.value)}
+          >
             <option value="" disabled>
               Select a symptom…
             </option>

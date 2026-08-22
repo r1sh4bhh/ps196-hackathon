@@ -62,6 +62,7 @@ export default function ReviewStep({
                 <li className="review-item review-item-flagged" key={observation.__obsId || index}>
                   <span>{observation.rawName}</span>
                   <select
+                    className="form-control"
                     value={observation.key || ""}
                     onChange={(event) => handleRemap(index, event.target.value || null)}
                   >

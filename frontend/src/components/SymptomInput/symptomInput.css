@@ -71,32 +71,8 @@
   flex: 1;
 }
 
-.select-control::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: var(--space-3);
-  width: 0.5rem;
-  height: 0.5rem;
-  border-right: 2px solid var(--color-muted);
-  border-bottom: 2px solid var(--color-muted);
-  pointer-events: none;
-  transform: translateY(-50%) rotate(45deg);
-}
-
 .symptom-input select {
-  appearance: none;
   width: 100%;
-  min-height: 2.75rem;
-  padding: var(--space-2) 2.5rem var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-.symptom-input select:hover {
-  border-color: var(--color-primary);
 }
 
 .symptom-unmatched {

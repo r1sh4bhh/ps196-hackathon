@@ -40,7 +40,11 @@ function QuestionField({ question, value, error, onChange, symptomInputRef }) {
     return (
       <label className="field">
         <span>{question.label}</span>
-        <select value={value ?? ""} onChange={(event) => handleChange(event.target.value)}>
+        <select
+          className="form-control"
+          value={value ?? ""}
+          onChange={(event) => handleChange(event.target.value)}
+        >
           <option value="" disabled>
             Select an option
           </option>

@@ -151,11 +151,33 @@ describe("SymptomInput automatic parsing", () => {
     act(() => root.render(<Harness />));
 
     const manualSelect = container.querySelector(".symptom-manual-pick select");
+    expect(manualSelect.classList.contains("form-control")).toBe(true);
     expect(manualSelect.value).toBe("");
     expect([...manualSelect.options].find((option) => option.value === "").textContent).toBe(
       "Select a symptom…"
     );
     expect(container.querySelector(".symptom-manual-pick button").disabled).toBe(true);
+  });
+
+  it("applies the shared control class to ambiguity selects", () => {
+    const parser = {
+      parse: () => ({
+        matched: [],
+        negated: [],
+        ambiguous: [{ matchedText: "swelling", candidates: ["edema"] }],
+        unmatched: [],
+      }),
+    };
+    act(() => root.render(<SymptomInput symptoms={[]} onChange={() => {}} parser={parser} />));
+
+    typeDescription("swelling");
+    finishDebounce();
+
+    expect(
+      [...container.querySelectorAll("select")].every((select) =>
+        select.classList.contains("form-control")
+      )
+    ).toBe(true);
   });
 
   it("renders chip labels in sentence case rather than title case", () => {
