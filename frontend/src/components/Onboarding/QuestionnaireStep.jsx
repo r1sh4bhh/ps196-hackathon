@@ -5,9 +5,19 @@ import {
   isQuestionVisible,
   computeBmi,
 } from "../../constants/questionnaire";
+import SymptomInput from "../SymptomInput/SymptomInput";
 
 function QuestionField({ question, value, error, onChange }) {
   const handleChange = (nextValue) => onChange(question.id, nextValue);
+
+  if (question.id === "baseline_symptoms") {
+    return (
+      <fieldset className="field">
+        <legend>{question.label}</legend>
+        <SymptomInput symptoms={Array.isArray(value) ? value : []} onChange={handleChange} />
+      </fieldset>
+    );
+  }
 
   if (question.type === "boolean") {
     return (

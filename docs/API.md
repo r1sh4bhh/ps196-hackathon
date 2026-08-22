@@ -186,7 +186,12 @@ Response Body:
 
 The Backend sends processed patient data to the ML inference module.
 
-### Input
+### Legacy normalized shape
+
+`symptoms_encoded` is retained for compatibility with the normalized mock
+payload, but neither the mock predictor nor the real inference bridge consumes
+it. The real bridge sends the confirmed `symptoms` names from the request, and
+Python builds its own vector using `MODEL_A_SYMPTOMS`.
 
 ```json
 {
@@ -196,13 +201,7 @@ The Backend sends processed patient data to the ML inference module.
     "heart_rate": 0.6,
     "bmi": 27.8
   },
-  "symptoms_encoded": [
-    1,
-    1,
-    0,
-    0,
-    1
-  ],
+  "symptoms_encoded": [0, 0, "... 132 entries in MODEL_A_SYMPTOMS order"],
   "labs_normalized": {
     "glucose": 0.9,
     "cholesterol": 0.7

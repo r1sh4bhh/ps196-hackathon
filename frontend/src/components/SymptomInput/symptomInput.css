@@ -1,0 +1,97 @@
+.symptom-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.symptom-description {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7c78;
+}
+
+.symptom-description textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e1e6e4;
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.symptom-parse-button,
+.symptom-review-row button,
+.symptom-manual-pick button {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 1px solid #2f6f5e;
+  border-radius: 8px;
+  background: #fff;
+  color: #2f6f5e;
+  cursor: pointer;
+}
+
+.symptom-parse-button:disabled,
+.symptom-manual-pick button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.symptom-review-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #44534f;
+  font-size: 13px;
+}
+
+.symptom-suggestion {
+  display: inline-flex;
+  align-items: center;
+}
+
+.symptom-dismiss {
+  border: 0;
+  background: transparent;
+  color: #6b7c78;
+  cursor: pointer;
+}
+
+.symptom-negated {
+  padding: 10px;
+  border-radius: 8px;
+  background: #eef2f1;
+}
+
+.symptom-review-row,
+.symptom-manual-pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.symptom-manual-pick select {
+  flex: 1;
+}
+
+.symptom-unmatched {
+  padding: 10px;
+  border: 1px solid #f0c14b;
+  border-radius: 8px;
+  background: #fffaf0;
+}
+
+.symptom-unmatched ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.symptom-checkboxes summary {
+  margin-bottom: 10px;
+  color: #2f6f5e;
+  cursor: pointer;
+}
