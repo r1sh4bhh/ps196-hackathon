@@ -1,0 +1,12 @@
+# Pinned to the versions verified working on Python 3.14 (Windows, amd64).
+#
+# scikit-learn is pinned exactly, not with >=, because joblib artefacts do not
+# reliably unpickle across scikit-learn versions. A teammate on a different
+# minor version will either get a noisy InconsistentVersionWarning or a hard
+# failure when loading model_*.joblib. If you bump this, retrain all models.
+
+scikit-learn==1.9.0
+pandas==3.0.5
+numpy==2.5.2
+joblib==1.5.3
+scipy==1.18.1
