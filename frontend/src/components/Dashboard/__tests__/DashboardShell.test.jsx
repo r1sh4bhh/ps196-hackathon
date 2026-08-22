@@ -244,6 +244,37 @@ describe("DashboardShell symptom differential", () => {
   });
 });
 
+describe("DashboardShell risk trajectory", () => {
+  it("shows the honest empty state with one visit's worth of data", () => {
+    const dom = render({ prediction: basePrediction, trajectory: [{ day: 1, risk: 0.3 }] });
+
+    expect(dom.querySelector(".trajectory-empty")).not.toBeNull();
+    expect(dom.querySelector(".trajectory-container")).toBeNull();
+  });
+
+  it("shows the honest empty state without any trajectory data", () => {
+    const dom = render({ prediction: basePrediction });
+
+    expect(dom.querySelector(".trajectory-empty").textContent).toContain(
+      "after more visits are recorded"
+    );
+  });
+
+  it("renders a real chart once two or more visits exist", () => {
+    const dom = render({
+      prediction: basePrediction,
+      trajectory: [
+        { day: 1, risk: 0.3 },
+        { day: 2, risk: 0.5 },
+      ],
+    });
+
+    expect(dom.querySelector(".trajectory-container")).not.toBeNull();
+    expect(dom.querySelectorAll(".trajectory-svg circle")).toHaveLength(2);
+    expect(dom.querySelector(".trajectory-empty")).toBeNull();
+  });
+});
+
 describe("DashboardShell without ml_detail", () => {
   it("renders risk scores without caveats and never prints undefined", () => {
     const dom = render({ prediction: { ...basePrediction, source: "mock" } });

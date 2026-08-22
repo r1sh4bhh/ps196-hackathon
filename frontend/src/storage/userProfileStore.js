@@ -1,4 +1,5 @@
-const PROFILE_KEY = "ps196_user_profile";
+const LEGACY_PROFILE_KEY = "ps196_user_profile";
+const PROFILES_KEY = "ps196_user_profiles";
 const DRAFT_KEY = "ps196_onboarding_draft";
 const SCHEMA_VERSION = 1;
 
@@ -37,47 +38,154 @@ function runMigrations(record) {
   return { ...migrated, schemaVersion: SCHEMA_VERSION };
 }
 
-export function saveProfile(profile) {
+function emptyStore() {
+  return { profiles: {}, activePatientId: null };
+}
+
+// Multiple people (e.g. family members) can share one device. Every saved
+// profile is keyed by patientId under a single store, with an
+// `activePatientId` pointer to whoever was used most recently. Legacy
+// installs that only ever had one profile under `ps196_user_profile` are
+// migrated into this shape the first time they're read.
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(PROFILES_KEY);
+    if (raw) {
+      const parsed = safeParse(raw);
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        parsed.profiles &&
+        typeof parsed.profiles === "object"
+      ) {
+        return {
+          profiles: { ...parsed.profiles },
+          activePatientId: parsed.activePatientId ?? null,
+        };
+      }
+      // Malformed store data: degrade to empty rather than throwing or
+      // submitting partial data downstream.
+      return emptyStore();
+    }
+
+    const legacyRaw = localStorage.getItem(LEGACY_PROFILE_KEY);
+    if (legacyRaw) {
+      const legacyProfile = runMigrations(safeParse(legacyRaw));
+      if (legacyProfile && legacyProfile.patientId) {
+        const migratedStore = {
+          profiles: { [legacyProfile.patientId]: legacyProfile },
+          activePatientId: legacyProfile.patientId,
+        };
+        persistStore(migratedStore);
+        try {
+          localStorage.removeItem(LEGACY_PROFILE_KEY);
+        } catch {
+          // Best-effort cleanup only; the new store is already authoritative.
+        }
+        return migratedStore;
+      }
+    }
+
+    return emptyStore();
+  } catch {
+    return emptyStore();
+  }
+}
+
+function persistStore(store) {
+  try {
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(store));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Saves (creates or updates) a profile keyed by its patientId and makes it
+// the active person unless `setActive: false` is passed explicitly.
+export function saveProfile(profile, { setActive = true } = {}) {
+  if (!profile || !profile.patientId) {
+    return null;
+  }
+
+  const store = loadStore();
   const record = {
     ...profile,
     schemaVersion: SCHEMA_VERSION,
     updatedAt: new Date().toISOString(),
   };
 
-  try {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(record));
-    return record;
-  } catch {
-    return null;
+  store.profiles[record.patientId] = record;
+  if (setActive || !store.activePatientId) {
+    store.activePatientId = record.patientId;
   }
+
+  return persistStore(store) ? record : null;
 }
 
-export function loadProfile() {
-  try {
-    const raw = localStorage.getItem(PROFILE_KEY);
-    if (!raw) {
-      return null;
+// Loads a specific person's profile, or the active person's profile when no
+// patientId is given.
+export function loadProfile(patientId) {
+  const store = loadStore();
+  const id = patientId ?? store.activePatientId;
+  if (!id) {
+    return null;
+  }
+  return runMigrations(store.profiles[id]);
+}
+
+export function hasProfile(patientId) {
+  return loadProfile(patientId) !== null;
+}
+
+// Lists every saved person on this device, most recently updated first.
+export function listProfiles() {
+  const store = loadStore();
+  return Object.values(store.profiles)
+    .map((record) => runMigrations(record))
+    .filter(Boolean)
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+
+export function getActivePatientId() {
+  return loadStore().activePatientId;
+}
+
+// Explicitly switches which saved person is "active" (used when a returning
+// patient or a clinician picks a different saved person).
+export function setActivePatientId(patientId) {
+  const store = loadStore();
+  if (!store.profiles[patientId]) {
+    return false;
+  }
+  store.activePatientId = patientId;
+  return persistStore(store);
+}
+
+// With a patientId: removes just that person. Without one: wipes every
+// saved profile (used by "redo onboarding").
+export function clearProfile(patientId) {
+  if (patientId) {
+    const store = loadStore();
+    delete store.profiles[patientId];
+    if (store.activePatientId === patientId) {
+      const remaining = Object.keys(store.profiles);
+      store.activePatientId = remaining[0] ?? null;
     }
-    return runMigrations(safeParse(raw));
-  } catch {
-    return null;
+    persistStore(store);
+    return;
   }
-}
 
-export function hasProfile() {
-  return loadProfile() !== null;
-}
-
-export function clearProfile() {
   try {
-    localStorage.removeItem(PROFILE_KEY);
+    localStorage.removeItem(PROFILES_KEY);
+    localStorage.removeItem(LEGACY_PROFILE_KEY);
   } catch {
     // Ignore storage errors on clear.
   }
 }
 
-export function exportProfile() {
-  const profile = loadProfile();
+export function exportProfile(patientId) {
+  const profile = loadProfile(patientId);
   return profile ? JSON.stringify(profile, null, 2) : null;
 }
 

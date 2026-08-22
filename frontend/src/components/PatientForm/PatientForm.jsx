@@ -7,6 +7,7 @@ import { validatePatientData } from "../../utils/validation";
 import { submitPatientData } from "../../api/predictService";
 import { computeAllBaselines } from "../../utils/baseline";
 import { listAssessments, saveAssessment } from "../../storage/assessmentHistory";
+import { buildRiskTrajectory } from "../../utils/trajectory";
 import "./patientForm.css";
 
 const initialState = {
@@ -29,12 +30,22 @@ const initialState = {
   },
 };
 
-export default function PatientForm({ onPredictionReceived, initialData }) {
+export default function PatientForm({ onPredictionReceived, initialData, mode = "full", personLabel }) {
   const [formData, setFormData] = useState(() => mergeInitialData(initialData));
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const symptomInputRef = useRef(null);
+
+  // A short return-visit flow is only safe when we already have real,
+  // previously-captured values for the stable identity fields it hides.
+  // Otherwise we ask rather than guess, per the intake contract.
+  const hasStableDetails =
+    hasValue(initialData?.patientId) &&
+    hasValue(initialData?.age) &&
+    hasValue(initialData?.vitals?.height_cm);
+  const isShortFlow = mode === "short" && hasStableDetails;
+  const [showStableDetails, setShowStableDetails] = useState(!isShortFlow);
 
   const updateField = (section, field, value) => {
     setFormData((previous) => {
@@ -80,7 +91,11 @@ export default function PatientForm({ onPredictionReceived, initialData }) {
         prediction,
         baselines,
       });
-      onPredictionReceived(normalized, prediction, baselines, history[0]?.timestamp);
+      const fullHistory = listAssessments(normalized.patientId);
+      const trajectory = prediction.top_disease
+        ? buildRiskTrajectory(fullHistory, prediction.top_disease)
+        : [];
+      onPredictionReceived(normalized, prediction, baselines, history[0]?.timestamp, trajectory);
     } catch (error) {
       setSubmitError(error.message || "Something went wrong. Please try again.");
     } finally {
@@ -92,22 +107,48 @@ export default function PatientForm({ onPredictionReceived, initialData }) {
     <form className="patient-form" onSubmit={handleSubmit}>
       <header className="form-header">
         <h1>Patient Health Intake</h1>
-        <p className="subtitle">
-          Enter patient demographics, vitals, symptoms, and lab results to generate a disease risk
-          prediction.
-        </p>
+        {isShortFlow ? (
+          <p className="subtitle">
+            Continuing as <strong>{personLabel || formData.patientId}</strong>. Enter today&apos;s
+            vitals and symptoms - your stored details are carried forward automatically.
+          </p>
+        ) : (
+          <p className="subtitle">
+            Enter patient demographics, vitals, symptoms, and lab results to generate a disease
+            risk prediction.
+          </p>
+        )}
       </header>
 
-      <DemographicFields
-        formData={formData}
-        errors={errors}
-        onChange={(field, value) => updateField("root", field, value)}
-      />
+      {isShortFlow && !showStableDetails && (
+        <div className="stable-details-summary">
+          <span>
+            Patient ID <strong>{formData.patientId}</strong>, age {formData.age}, height{" "}
+            {formData.vitals.height_cm} cm carried forward from your last visit.
+          </span>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setShowStableDetails(true)}
+          >
+            Review / edit these details
+          </button>
+        </div>
+      )}
+
+      {(showStableDetails || !isShortFlow) && (
+        <DemographicFields
+          formData={formData}
+          errors={errors}
+          onChange={(field, value) => updateField("root", field, value)}
+        />
+      )}
 
       <VitalFields
         vitals={formData.vitals}
         errors={errors}
         onChange={(field, value) => updateField("vitals", field, value)}
+        hiddenFields={isShortFlow && !showStableDetails ? ["height_cm"] : []}
       />
 
       <SymptomFields
@@ -192,4 +233,8 @@ function toNumber(value) {
 
   const number = Number(value);
   return Number.isNaN(number) ? undefined : number;
+}
+
+function hasValue(value) {
+  return value !== null && value !== undefined && value !== "";
 }

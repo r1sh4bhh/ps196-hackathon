@@ -35,6 +35,7 @@ export default function DashboardShell({
   prediction,
   baselineCurrent,
   baselineData,
+  trajectory,
   onBackToForm,
 }) {
   if (!prediction) {
@@ -125,8 +126,8 @@ export default function DashboardShell({
       </section>
 
       <section className="dashboard-insights" aria-label="Assessment insights">
-        {Array.isArray(prediction.trajectory) && prediction.trajectory.length > 0 ? (
-          <RiskTrajectory trajectory={prediction.trajectory} />
+        {Array.isArray(trajectory) && trajectory.length > 1 ? (
+          <RiskTrajectory trajectory={trajectory} label="Risk Trend Across Visits" pointLabel="Visit" />
         ) : (
           <div className="trajectory-empty">
             Risk trajectory will appear after more visits are recorded.

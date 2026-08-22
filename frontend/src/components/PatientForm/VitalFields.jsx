@@ -9,12 +9,14 @@ const FIELDS = [
   { key: "height_cm", label: "Height (cm)" },
 ];
 
-export default function VitalFields({ vitals, errors, onChange }) {
+export default function VitalFields({ vitals, errors, onChange, hiddenFields = [] }) {
+  const visibleFields = FIELDS.filter(({ key }) => !hiddenFields.includes(key));
+
   return (
     <fieldset className="form-section">
       <legend>Vitals</legend>
       <div className="form-grid">
-        {FIELDS.map(({ key, label }) => (
+        {visibleFields.map(({ key, label }) => (
           <label key={key}>
             {label}
             <input

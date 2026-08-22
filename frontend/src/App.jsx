@@ -2,30 +2,71 @@ import React, { useState } from "react";
 import PatientForm from "./components/PatientForm/PatientForm";
 import DashboardShell from "./components/Dashboard/DashboardShell";
 import OnboardingWizard from "./components/Onboarding/OnboardingWizard";
-import { hasProfile, loadProfile, clearProfile } from "./storage/userProfileStore";
+import RoleSelect from "./components/RoleSelect/RoleSelect";
+import PersonSwitcher from "./components/PersonSwitcher/PersonSwitcher";
+import ClinicianPatientList from "./components/ClinicianPatientList/ClinicianPatientList";
+import RoleSwitcher from "./components/RoleSwitcher";
+import {
+  loadProfile,
+  clearProfile,
+  listProfiles,
+  setActivePatientId,
+} from "./storage/userProfileStore";
+import { getRole, setRole, ROLES } from "./storage/roleStore";
 import { buildPatientDataFromProfile } from "./storage/buildPatientData";
 import { demoPatientHistory } from "./mocks/demoPatientHistory";
-import { removeAssessment, saveAssessment } from "./storage/assessmentHistory";
+import {
+  removeAssessment,
+  saveAssessment,
+  listAssessments,
+  latestAssessment,
+} from "./storage/assessmentHistory";
 import ThemeToggle from "./components/ThemeToggle";
+
+function hasReturnVisitHistory(patientId) {
+  return Boolean(patientId) && listAssessments(patientId).length > 0;
+}
+
+function computeInitialView(role, profile) {
+  if (!role) {
+    return "role-select";
+  }
+  if (role === ROLES.CLINICIAN) {
+    return "clinician-list";
+  }
+  return profile ? "form" : "onboarding";
+}
 
 export default function App() {
   const [prediction, setPrediction] = useState(null);
   const [patientData, setPatientData] = useState(null);
   const [baselines, setBaselines] = useState({});
   const [baselineSince, setBaselineSince] = useState(null);
+  const [trajectory, setTrajectory] = useState([]);
+  const [role, setRoleValue] = useState(() => getRole());
   const [profile, setProfile] = useState(() => loadProfile());
-  const [view, setView] = useState(() => (hasProfile() ? "form" : "onboarding"));
+  const [view, setView] = useState(() => computeInitialView(getRole(), loadProfile()));
+
+  const handleRoleSelected = (nextRole) => {
+    setRole(nextRole);
+    setRoleValue(nextRole);
+    const currentProfile = loadProfile();
+    setProfile(currentProfile);
+    setView(computeInitialView(nextRole, currentProfile));
+  };
 
   const handlePredictionReceived = (
     data,
     resultPrediction,
     resultBaselines,
-    resultBaselineSince
+    resultBaselineSince,
+    resultTrajectory
   ) => {
     setPatientData(data);
     setPrediction(resultPrediction);
     setBaselines(resultBaselines);
     setBaselineSince(resultBaselineSince);
+    setTrajectory(resultTrajectory || []);
     setView("dashboard");
   };
 
@@ -35,12 +76,31 @@ export default function App() {
   };
 
   const handleRedoOnboarding = () => {
-    clearProfile();
+    if (profile?.patientId) {
+      clearProfile(profile.patientId);
+    }
     setProfile(null);
     setView("onboarding");
   };
 
+  const handleAddPerson = () => {
+    setView("onboarding");
+  };
+
+  const handleSwitchPerson = (patientId) => {
+    if (!setActivePatientId(patientId)) {
+      return;
+    }
+    setProfile(loadProfile(patientId));
+    setView("form");
+  };
+
+  const handleBackToPatientList = () => {
+    setView("clinician-list");
+  };
+
   const initialFormData = buildPatientDataFromProfile(profile);
+  const isReturningVisit = hasReturnVisitHistory(profile?.patientId);
   const baselineCurrent = Object.fromEntries(
     Object.entries(baselines).map(([metric, result]) => [metric, result.current])
   );
@@ -62,11 +122,42 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="app-theme-toggle">
+        <RoleSwitcher role={role} onSwitch={handleRoleSelected} />
         <ThemeToggle />
       </div>
+
+      {view === "role-select" && <RoleSelect onSelect={handleRoleSelected} />}
+
+      {view === "clinician-list" && (
+        <ClinicianPatientList
+          patients={listProfiles().map((savedProfile) => ({
+            patientId: savedProfile.patientId,
+            latestAssessment: latestAssessment(savedProfile.patientId),
+          }))}
+          onSelectPatient={handleSwitchPerson}
+          onAddPatient={handleAddPerson}
+        />
+      )}
+
       {view === "onboarding" && <OnboardingWizard onComplete={handleOnboardingComplete} />}
+
       {view === "form" && (
         <>
+          {role === ROLES.PATIENT && (
+            <PersonSwitcher
+              profiles={listProfiles()}
+              activePatientId={profile?.patientId}
+              onSwitch={handleSwitchPerson}
+              onAddPerson={handleAddPerson}
+            />
+          )}
+          {role === ROLES.CLINICIAN && (
+            <div className="profile-actions">
+              <button type="button" className="btn-secondary" onClick={handleBackToPatientList}>
+                Back to patient list
+              </button>
+            </div>
+          )}
           <div className="profile-actions">
             <button type="button" className="btn-secondary" onClick={handleRedoOnboarding}>
               Edit profile / redo onboarding
@@ -79,19 +170,31 @@ export default function App() {
             </button>
           </div>
           <PatientForm
+            key={profile?.patientId || "no-profile"}
             onPredictionReceived={handlePredictionReceived}
             initialData={initialFormData}
+            mode={isReturningVisit ? "short" : "full"}
           />
         </>
       )}
       {view === "dashboard" && (
-        <DashboardShell
-          patientData={patientData}
-          prediction={prediction}
-          baselineCurrent={baselineCurrent}
-          baselineData={baselineData}
-          onBackToForm={() => setView("form")}
-        />
+        <>
+          {role === ROLES.CLINICIAN && (
+            <div className="profile-actions">
+              <button type="button" className="btn-secondary" onClick={handleBackToPatientList}>
+                Back to patient list
+              </button>
+            </div>
+          )}
+          <DashboardShell
+            patientData={patientData}
+            prediction={prediction}
+            baselineCurrent={baselineCurrent}
+            baselineData={baselineData}
+            trajectory={trajectory}
+            onBackToForm={() => setView("form")}
+          />
+        </>
       )}
     </div>
   );
