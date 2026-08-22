@@ -171,7 +171,7 @@ function rewriteInvertedPhrasing(text) {
   // "pain behind my eyes" / "ache behind the eyes" -> pain behind the eyes
   result = result.replace(
     new RegExp(`\\b(?:${SENSATION_WORDS})\\s+behind\\s+(?:my|the)\\s+eyes\\b`, "g"),
-    () => rewrittenPhraseFor("pain_behind_the_eyes")
+    (match) => rewrittenPhraseFor("pain_behind_the_eyes") ?? match
   );
 
   // "<sensation> in (my|the) <part>" -> "<part>_pain" (or its mapped term)
