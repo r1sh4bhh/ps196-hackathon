@@ -132,7 +132,9 @@ export default function SymptomInput({ symptoms = [], onChange, parser = symptom
 
       <div className="symptom-manual-pick">
         <select value={manualPick} onChange={(event) => setManualPick(event.target.value)}>
-          <option value="">Pick a symptom manually</option>
+          <option value="" disabled>
+            Select a symptom…
+          </option>
           {CANONICAL_SYMPTOMS.map((symptom) => (
             <option value={symptom} key={symptom}>
               {SYMPTOM_LABELS[symptom]}

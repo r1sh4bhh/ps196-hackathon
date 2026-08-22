@@ -7,8 +7,62 @@ const CLAUSE_BOUNDARY = /(?:\bbut\b|\bhowever\b|[,.;])/g;
 const FUZZY_THRESHOLD = 0.84;
 const UNSUPPORTED_PHRASES = ["always thirsty"];
 
+// Filler lead-ins that shouldn't defeat a lookup, e.g. "feeling", "i've got".
+// Longer/more specific phrases are listed before the shorter phrases they contain.
+const FILLER_PHRASES = [
+  "been having",
+  "i've got",
+  "suffering from",
+  "a bit of",
+  "lots of",
+  "really bad",
+  "i have",
+  "i am",
+  "i'm",
+  "experiencing",
+  "getting",
+  "having",
+  "feeling",
+  "some",
+];
+
+// Sensation words that combine with a body part to describe pain in an
+// inverted construction, e.g. "pain in my chest" or "ache in the back".
+const SENSATION_WORDS =
+  "pain|ache|aching|hurting|discomfort|soreness|tightness|cramping";
+
+// Body-part words mapped to their canonical vocabulary term. A value can be
+// an array when the rewrite is genuinely ambiguous between two real terms;
+// in that case the caller routes it through the ambiguous channel instead of
+// silently choosing one.
+const PART_REWRITES = {
+  chest: "chest_pain",
+  stomach: "stomach_pain",
+  belly: "belly_pain",
+  back: "back_pain",
+  neck: "neck_pain",
+  joint: "joint_pain",
+  joints: "joint_pain",
+  knee: "knee_pain",
+  hip: "hip_joint_pain",
+  muscle: "muscle_pain",
+  muscles: "muscle_pain",
+  head: "headache",
+  abdomen: ["stomach_pain", "abdominal_pain"],
+  tummy: ["stomach_pain", "belly_pain"],
+};
+
+const AMBIGUOUS_REWRITE_ENTRIES = Object.entries(PART_REWRITES)
+  .filter(([, mapped]) => Array.isArray(mapped))
+  .map(([part, candidates]) => ({
+    phrases: [`__ambiguous_${part}__`],
+    candidates,
+    displayText: part,
+  }));
+
 const TERM_MAP = [
   ...SYMPTOM_SYNONYMS,
+  ...AMBIGUOUS_REWRITE_ENTRIES,
   ...CANONICAL_SYMPTOMS.map((symptom) => ({
     phrases: [symptom.replace(/_/g, " "), SYMPTOM_LABELS[symptom].toLowerCase()],
     candidates: [symptom],
@@ -21,7 +75,7 @@ export const ruleBasedParser = Object.freeze({
     const result = { matched: [], negated: [], ambiguous: [], unmatched: [] };
     if (!source) return result;
 
-    const lower = source.toLowerCase().replace(/[’]/g, "'");
+    const lower = normalize(source.toLowerCase().replace(/[’]/g, "'"));
     const occurrences = findTerms(lower);
     const coveredClauses = new Set();
     const seen = new Set();
@@ -98,27 +152,88 @@ export const ruleBasedParser = Object.freeze({
   },
 });
 
+function normalize(text) {
+  return rewriteInvertedPhrasing(stripFillers(text));
+}
+
+function stripFillers(text) {
+  let result = text;
+  for (const filler of FILLER_PHRASES) {
+    const expression = new RegExp(`\\b${escapeRegExp(filler)}\\b`, "g");
+    result = result.replace(expression, " ");
+  }
+  return result.replace(/\s+/g, " ").trim();
+}
+
+function rewriteInvertedPhrasing(text) {
+  let result = text;
+
+  // "pain behind my eyes" / "ache behind the eyes" -> pain behind the eyes
+  result = result.replace(
+    new RegExp(`\\b(?:${SENSATION_WORDS})\\s+behind\\s+(?:my|the)\\s+eyes\\b`, "g"),
+    (match) => rewrittenPhraseFor("pain_behind_the_eyes") ?? match
+  );
+
+  // "<sensation> in (my|the) <part>" -> "<part>_pain" (or its mapped term)
+  result = result.replace(
+    new RegExp(`\\b(?:${SENSATION_WORDS})\\s+in\\s+(?:my|the)\\s+([a-z]+)\\b`, "g"),
+    (match, part) => rewrittenPhraseForPart(part) ?? match
+  );
+
+  // "(my|the) <part> (hurts|is hurting|aches|is aching|is sore)" -> canonical term
+  result = result.replace(
+    /\b(?:(?:my|the)\s+)?([a-z]+)\s+(?:hurts|hurt|is hurting|aches|ache|is aching|is sore)\b/g,
+    (match, part) => rewrittenPhraseForPart(part) ?? match
+  );
+
+  return result;
+}
+
+function rewrittenPhraseForPart(part) {
+  const mapped = PART_REWRITES[part];
+  if (!mapped) return null;
+
+  if (Array.isArray(mapped)) return `__ambiguous_${part}__`;
+
+  return rewrittenPhraseFor(mapped);
+}
+
+function rewrittenPhraseFor(symptom) {
+  // Only ever rewrite into a term that actually exists in the frozen
+  // vocabulary; never invent a term that isn't recognised.
+  if (!CANONICAL_SYMPTOMS.includes(symptom)) return null;
+  return symptom.replace(/_/g, " ");
+}
+
 function findTerms(text) {
   const found = [];
   const occupied = [];
 
+  const entryPhrasePairs = [];
   for (const entry of TERM_MAP) {
     for (const phrase of entry.phrases) {
-      const expression = new RegExp(`\\b${escapeRegExp(phrase)}\\b`, "g");
-      for (const match of text.matchAll(expression)) {
-        const start = match.index;
-        const end = start + match[0].length;
-        if (occupied.some(([from, to]) => start < to && end > from)) continue;
-        occupied.push([start, end]);
-        found.push({
-          candidates: entry.candidates,
-          phrase,
-          matchedText: match[0],
-          index: start,
-          method: SYMPTOM_SYNONYMS.includes(entry) ? "synonym" : "exact",
-          confidence: 1,
-        });
-      }
+      entryPhrasePairs.push({ entry, phrase });
+    }
+  }
+  // Match longer phrases first so a full phrase like "hip joint pain" claims
+  // its range before a shorter phrase like "joint pain" can grab a subset of it.
+  entryPhrasePairs.sort((a, b) => b.phrase.length - a.phrase.length);
+
+  for (const { entry, phrase } of entryPhrasePairs) {
+    const expression = new RegExp(`\\b${escapeRegExp(phrase)}\\b`, "g");
+    for (const match of text.matchAll(expression)) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (occupied.some(([from, to]) => start < to && end > from)) continue;
+      occupied.push([start, end]);
+      found.push({
+        candidates: entry.candidates,
+        phrase,
+        matchedText: entry.displayText ?? match[0],
+        index: start,
+        method: SYMPTOM_SYNONYMS.includes(entry) ? "synonym" : "exact",
+        confidence: 1,
+      });
     }
   }
 

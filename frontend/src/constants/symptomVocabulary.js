@@ -20,7 +20,7 @@ export const SYMPTOM_LABELS = Object.freeze(
     CANONICAL_SYMPTOMS.map((symptom) => [
       symptom,
       LABEL_OVERRIDES[symptom] ||
-        symptom.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        symptom.replace(/_/g, " ").replace(/^\w/, (letter) => letter.toUpperCase()),
     ])
   )
 );

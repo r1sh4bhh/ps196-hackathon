@@ -17,5 +17,7 @@ describe("symptom vocabulary", () => {
     expect(CANONICAL_SYMPTOMS).toHaveLength(132);
     expect(SYMPTOM_LABELS.blurred_and_distorted_vision).toBe("Blurred or distorted vision");
     expect(SYMPTOM_LABELS.polyuria).toBe("Passing urine very often");
+    expect(SYMPTOM_LABELS.chest_pain).toBe("Chest pain");
+    expect(SYMPTOM_LABELS.back_pain).toBe("Back pain");
   });
 });

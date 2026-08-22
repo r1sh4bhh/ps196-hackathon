@@ -97,4 +97,138 @@ describe("ruleBasedParser", () => {
     ]);
     expect(result.negated.map(({ symptom }) => symptom)).toEqual(["chest_pain"]);
   });
+
+  describe("inverted phrasing generalisation", () => {
+    it("maps '<sensation> in (my|the) <part>' to the canonical term", () => {
+      expect(
+        ruleBasedParser.parse("pain in my chest").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in my stomach").matched.map(({ symptom }) => symptom)
+      ).toEqual(["stomach_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in my belly").matched.map(({ symptom }) => symptom)
+      ).toEqual(["belly_pain"]);
+      expect(
+        ruleBasedParser.parse("ache in the back").matched.map(({ symptom }) => symptom)
+      ).toEqual(["back_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in my neck").matched.map(({ symptom }) => symptom)
+      ).toEqual(["neck_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in my joints").matched.map(({ symptom }) => symptom)
+      ).toEqual(["joint_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in my knee").matched.map(({ symptom }) => symptom)
+      ).toEqual(["knee_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in my hip").matched.map(({ symptom }) => symptom)
+      ).toEqual(["hip_joint_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in my muscles").matched.map(({ symptom }) => symptom)
+      ).toEqual(["muscle_pain"]);
+      expect(
+        ruleBasedParser.parse("pain behind my eyes").matched.map(({ symptom }) => symptom)
+      ).toEqual(["pain_behind_the_eyes"]);
+      expect(
+        ruleBasedParser.parse("pain in my head").matched.map(({ symptom }) => symptom)
+      ).toEqual(["headache"]);
+    });
+
+    it("maps '(my|the) <part> (hurts|aches|...)' to the canonical term", () => {
+      expect(
+        ruleBasedParser.parse("my chest hurts").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+      expect(
+        ruleBasedParser.parse("my stomach hurts").matched.map(({ symptom }) => symptom)
+      ).toEqual(["stomach_pain"]);
+      expect(
+        ruleBasedParser.parse("my back hurts").matched.map(({ symptom }) => symptom)
+      ).toEqual(["back_pain"]);
+      expect(
+        ruleBasedParser.parse("muscles ache").matched.map(({ symptom }) => symptom)
+      ).toEqual(["muscle_pain"]);
+      expect(
+        ruleBasedParser.parse("stomach is aching").matched.map(({ symptom }) => symptom)
+      ).toEqual(["stomach_pain"]);
+      expect(
+        ruleBasedParser.parse("my head hurts").matched.map(({ symptom }) => symptom)
+      ).toEqual(["headache"]);
+    });
+
+    it("does not invent a term for a body part outside the frozen vocabulary", () => {
+      const result = ruleBasedParser.parse("pain in my elbow");
+      expect(result.matched).toEqual([]);
+      expect(result.ambiguous).toEqual([]);
+      expect(result.unmatched).toEqual(["pain in my elbow"]);
+    });
+
+    it("routes a genuinely ambiguous rewrite through the ambiguous channel", () => {
+      const stomachOrAbdominal = ruleBasedParser.parse("pain in my abdomen");
+      expect(stomachOrAbdominal.matched).toEqual([]);
+      expect(stomachOrAbdominal.ambiguous).toEqual([
+        { matchedText: "abdomen", candidates: ["stomach_pain", "abdominal_pain"] },
+      ]);
+
+      const stomachOrBelly = ruleBasedParser.parse("pain in my tummy");
+      expect(stomachOrBelly.matched).toEqual([]);
+      expect(stomachOrBelly.ambiguous).toEqual([
+        { matchedText: "tummy", candidates: ["stomach_pain", "belly_pain"] },
+      ]);
+    });
+
+    it("still matches the existing forward synonym phrases", () => {
+      expect(
+        ruleBasedParser.parse("chest pain").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+      expect(
+        ruleBasedParser.parse("chest tightness").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+    });
+  });
+
+  describe("filler-word tolerance", () => {
+    it("strips common lead-in fillers before matching", () => {
+      expect(
+        ruleBasedParser
+          .parse("I've got some really bad chest pain")
+          .matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+      expect(
+        ruleBasedParser
+          .parse("I am experiencing lots of fatigue")
+          .matched.map(({ symptom }) => symptom)
+      ).toEqual(["fatigue"]);
+    });
+
+    it("still negates when fillers precede the symptom", () => {
+      const notChestPain = ruleBasedParser.parse("not feeling any chest pain");
+      expect(notChestPain.matched).toEqual([]);
+      expect(notChestPain.negated.map(({ symptom }) => symptom)).toEqual(["chest_pain"]);
+
+      const deniesStomachPain = ruleBasedParser.parse("denies having stomach pain");
+      expect(deniesStomachPain.matched).toEqual([]);
+      expect(deniesStomachPain.negated.map(({ symptom }) => symptom)).toEqual(["stomach_pain"]);
+    });
+  });
+
+  describe("verification scenarios", () => {
+    it("recognizes polyuria and chest pain together", () => {
+      const result = ruleBasedParser.parse(
+        "peeing a lot more, feeling pain in my chest"
+      );
+      expect(result.matched.map(({ symptom }) => symptom)).toEqual([
+        "polyuria",
+        "chest_pain",
+      ]);
+      expect(result.unmatched).toEqual([]);
+    });
+
+    it("recognizes back pain and fatigue together", () => {
+      const result = ruleBasedParser.parse("my back hurts and I'm feeling really tired");
+      const matched = result.matched.map(({ symptom }) => symptom);
+      expect(matched).toContain("back_pain");
+      expect(matched).toContain("fatigue");
+    });
+  });
 });
