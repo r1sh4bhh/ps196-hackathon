@@ -61,4 +61,45 @@ describe("SymptomInput confirmation", () => {
     act(() => addButton.click());
     expect(onChange).toHaveBeenCalledWith(["fatigue"]);
   });
+
+  it("defaults the manual-add dropdown to a placeholder and disables Add until a real pick", () => {
+    const onChange = vi.fn();
+    act(() => root.render(<SymptomInput symptoms={[]} onChange={onChange} />));
+
+    const manualSelect = container.querySelector(".symptom-manual-pick select");
+    expect(manualSelect.value).toBe("");
+
+    const placeholderOption = [...manualSelect.options].find((option) => option.value === "");
+    expect(placeholderOption.textContent).toBe("Select a symptom…");
+    expect(placeholderOption.disabled).toBe(true);
+
+    const addButton = container.querySelector(".symptom-manual-pick button");
+    expect(addButton.disabled).toBe(true);
+
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(
+        manualSelect,
+        "fatigue"
+      );
+      manualSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(addButton.disabled).toBe(false);
+    act(() => addButton.click());
+    expect(onChange).toHaveBeenCalledWith(["fatigue"]);
+  });
+
+  it("renders chip labels in sentence case rather than title case", () => {
+    const onChange = vi.fn();
+    act(
+      () =>
+        root.render(
+          <SymptomInput symptoms={["polyuria", "chest_pain"]} onChange={onChange} />
+        )
+    );
+
+    expect(container.textContent).toContain("Passing urine very often");
+    expect(container.textContent).toContain("Chest pain");
+    expect(container.textContent).not.toContain("Passing Urine Very Often");
+  });
 });

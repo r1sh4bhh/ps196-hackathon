@@ -14,13 +14,7 @@ export const SYMPTOM_SYNONYMS = Object.freeze([
   },
   { phrases: ["throwing up"], candidates: ["vomiting"] },
   {
-    phrases: [
-      "chest tightness",
-      "pain in my chest",
-      "pain in the chest",
-      "hurting in my chest",
-      "hurting in the chest",
-    ],
+    phrases: ["chest tightness"],
     candidates: ["chest_pain"],
   },
   { phrases: ["dizzy", "lightheaded"], candidates: ["dizziness"] },
