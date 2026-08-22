@@ -31,6 +31,13 @@ reversable defect=7``. Inference would then send a value meaning one thing
 and the model would interpret it as another, with no error raised anywhere.
 Silent disagreements about what a number means are precisely what the frozen
 feature spec exists to prevent.
+
+Derived values
+--------------
+The intake form collects height and weight, not BMI. ``derive_bmi`` computes
+it so the model receives the patient's actual value rather than falling back
+to a training median - see the note on that function for why this was a real
+bug, not a hypothetical one.
 """
 
 from __future__ import annotations
@@ -60,6 +67,7 @@ __all__ = [
     "prepare_diabetes_features",
     "prepare_heart_features",
     "compute_imputation_medians",
+    "derive_bmi",
     "vector_from_patient_diabetes",
     "vector_from_patient_heart",
     "HEART_VALUE_MAPS",
@@ -195,6 +203,64 @@ def normalise_columns(frame: pd.DataFrame) -> pd.DataFrame:
         key = str(column).strip().lower().replace(" ", "").replace("-", "")
         renamed[column] = _COLUMN_ALIASES.get(key, str(column).strip().lower().replace(" ", "_"))
     return frame.rename(columns=renamed)
+
+
+def derive_bmi(vitals: dict[str, Any]) -> float | None:
+    """Return BMI from an explicit value, or compute it from height and weight.
+
+    The intake form collects height and weight; it does not ask for BMI. Before
+    this existed, ``vector_from_patient_diabetes`` looked only for a ``bmi``
+    key, found nothing, and silently substituted the training median of ~32.4 -
+    so a patient with a measured BMI of 28.4 was scored as if obese, with no
+    warning anywhere. BMI is one of the stronger Pima predictors, so this
+    materially moved the risk score.
+
+    The clinical rules already derived BMI correctly from the same fields. The
+    lesson is that a fallback default is only safe when the value genuinely is
+    unknown - reaching for one while the real data sits unread in the request
+    is a silent wrong answer, which is worse than a loud failure.
+
+    Accepts height in centimetres or metres, and weight in kilograms. Returns
+    ``None`` when the inputs are absent or not physiologically plausible,
+    letting the caller fall back to a median and report ``partial_input``.
+    """
+    if not isinstance(vitals, dict):
+        return None
+
+    explicit = vitals.get("bmi")
+    if explicit not in (None, ""):
+        try:
+            value = float(explicit)
+            if 8.0 <= value <= 100.0:
+                return round(value, 1)
+        except (TypeError, ValueError):
+            pass
+
+    weight = vitals.get("weight_kg", vitals.get("weight"))
+    height = vitals.get("height_cm", vitals.get("height"))
+
+    if weight in (None, "") or height in (None, ""):
+        return None
+
+    try:
+        weight = float(weight)
+        height = float(height)
+    except (TypeError, ValueError):
+        return None
+
+    # Accept metres as well as centimetres; anything under 3 is clearly metres.
+    if height < 3.0:
+        height *= 100.0
+
+    if not (50.0 <= height <= 260.0) or not (2.0 <= weight <= 500.0):
+        return None
+
+    bmi = weight / ((height / 100.0) ** 2)
+
+    if not (8.0 <= bmi <= 100.0):
+        return None
+
+    return round(bmi, 1)
 
 
 def _decode_heart_column(series: pd.Series, name: str) -> pd.Series:
@@ -349,6 +415,9 @@ def vector_from_patient_diabetes(
 ) -> list[float]:
     """Build one ordered Model B vector from a normalised patient record.
 
+    BMI is derived from height and weight when not supplied directly, so a
+    measured value is never discarded in favour of a median.
+
     Unknown fields fall back to the training median where one is available,
     then to zero. The result is validated against the frozen spec before it is
     returned, so a positional error surfaces here rather than as a confident
@@ -365,7 +434,7 @@ def vector_from_patient_diabetes(
         "blood_pressure": vitals.get("diastolic_bp"),
         "skin_thickness": labs.get("skin_thickness"),
         "insulin": labs.get("insulin"),
-        "bmi": vitals.get("bmi"),
+        "bmi": derive_bmi(vitals),
         "diabetes_pedigree_function": labs.get("diabetes_pedigree_function", 0.3725),
         "age": demographics.get("age"),
     }
