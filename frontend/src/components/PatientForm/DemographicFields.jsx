@@ -13,9 +13,7 @@ export default function DemographicFields({ formData, errors, onChange }) {
             onChange={(event) => onChange("patientId", event.target.value)}
             placeholder="e.g. P001"
           />
-          {errors.patientId && (
-            <span className="field-error">{errors.patientId}</span>
-          )}
+          {errors.patientId && <span className="field-error">{errors.patientId}</span>}
         </label>
 
         <label>

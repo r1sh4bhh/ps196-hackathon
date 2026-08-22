@@ -1,17 +1,5 @@
 import React from "react";
-
-const SYMPTOM_OPTIONS = [
-  "fatigue",
-  "frequent_urination",
-  "blurred_vision",
-  "chest_pain",
-  "shortness_of_breath",
-  "headache",
-  "dizziness",
-  "weight_loss",
-  "nausea",
-  "swelling",
-];
+import { CANONICAL_SYMPTOMS, SYMPTOM_LABELS } from "../../constants/symptoms";
 
 export default function SymptomFields({ symptoms, onChange }) {
   const toggle = (symptom) => {
@@ -28,14 +16,14 @@ export default function SymptomFields({ symptoms, onChange }) {
     <fieldset className="form-section">
       <legend>Symptoms</legend>
       <div className="chip-group">
-        {SYMPTOM_OPTIONS.map((symptom) => (
+        {CANONICAL_SYMPTOMS.map((symptom) => (
           <button
             type="button"
             key={symptom}
             className={`chip ${symptoms.includes(symptom) ? "chip-active" : ""}`}
             onClick={() => toggle(symptom)}
           >
-            {symptom.replace(/_/g, " ")}
+            {SYMPTOM_LABELS[symptom]}
           </button>
         ))}
       </div>

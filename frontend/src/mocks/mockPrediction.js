@@ -9,9 +9,7 @@ export function getMockPrediction(patientData) {
     risk_scores: {
       diabetes: round(diabetesRisk),
       hypertension: round(hypertensionRisk),
-      heart_disease: round(
-        clamp((diabetesRisk + hypertensionRisk) / 2, 0, 0.95)
-      ),
+      heart_disease: round(clamp((diabetesRisk + hypertensionRisk) / 2, 0, 0.95)),
       obesity: round(estimateObesityRisk(patientData)),
     },
     top_disease: diabetesRisk >= hypertensionRisk ? "diabetes" : "hypertension",

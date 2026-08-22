@@ -16,3 +16,11 @@ input {
 .app-shell {
   min-height: 100vh;
 }
+
+.profile-actions {
+  max-width: 640px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+  display: flex;
+  justify-content: flex-end;
+}

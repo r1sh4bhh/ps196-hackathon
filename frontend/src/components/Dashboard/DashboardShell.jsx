@@ -1,11 +1,7 @@
 import React from "react";
 import "./dashboardShell.css";
 
-export default function DashboardShell({
-  patientData,
-  prediction,
-  onBackToForm,
-}) {
+export default function DashboardShell({ patientData, prediction, onBackToForm }) {
   if (!prediction) {
     return (
       <div className="dashboard-empty">
@@ -23,8 +19,7 @@ export default function DashboardShell({
         <div>
           <h1>Risk Dashboard</h1>
           <p className="subtitle">
-            Patient {patientData?.patientId} - Top risk:{" "}
-            <strong>{prediction.top_disease}</strong> (
+            Patient {patientData?.patientId} - Top risk: <strong>{prediction.top_disease}</strong> (
             {Math.round(prediction.confidence * 100)}% confidence)
           </p>
         </div>
@@ -44,8 +39,7 @@ export default function DashboardShell({
 
       <section className="visualization-slot" data-owner="shivangi">
         <p className="placeholder-note">
-          Visualization components (trajectory chart, evidence panel) will be
-          integrated here.
+          Visualization components (trajectory chart, evidence panel) will be integrated here.
         </p>
       </section>
     </div>
