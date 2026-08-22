@@ -157,7 +157,8 @@ function clauseIndexAt(text, position) {
 }
 
 function findFuzzyMatch(clause) {
-  const words = clause.match(/[a-z]+/g) || [];
+  const wordMatches = [...clause.matchAll(/[a-z]+/g)];
+  const words = wordMatches.map((match) => match[0]);
   let best = null;
 
   for (const symptom of CANONICAL_SYMPTOMS) {
@@ -169,11 +170,14 @@ function findFuzzyMatch(clause) {
         if (candidate.length < 5) continue;
         const confidence = similarity(candidate, target);
         if (confidence >= FUZZY_THRESHOLD && (!best || confidence > best.confidence)) {
+          const start = wordMatches[index].index;
+          const lastWord = wordMatches[index + size - 1];
+          const end = lastWord.index + lastWord[0].length;
           best = {
             symptom,
-            matchedText: candidate,
+            matchedText: clause.slice(start, end),
             confidence: Number(confidence.toFixed(2)),
-            index: clause.indexOf(candidate),
+            index: start,
           };
         }
       }

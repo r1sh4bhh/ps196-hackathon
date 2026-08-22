@@ -44,6 +44,12 @@ describe("ruleBasedParser", () => {
     expect(result.matched[0]).toMatchObject({ symptom: "dizziness", method: "fuzzy" });
   });
 
+  it("preserves negation offsets when fuzzy matching punctuation", () => {
+    const result = ruleBasedParser.parse("no chest-pain");
+    expect(result.matched).toEqual([]);
+    expect(result.negated.map(({ symptom }) => symptom)).toEqual(["chest_pain"]);
+  });
+
   it("leaves nonsense and unsupported thirst language unmatched", () => {
     expect(ruleBasedParser.parse("flibbertigibbet").unmatched).toEqual(["flibbertigibbet"]);
     expect(ruleBasedParser.parse("always thirsty").unmatched).toEqual(["always thirsty"]);
