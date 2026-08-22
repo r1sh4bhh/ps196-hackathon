@@ -11,13 +11,20 @@ export default function App() {
   const [prediction, setPrediction] = useState(null);
   const [patientData, setPatientData] = useState(null);
   const [baselines, setBaselines] = useState({});
+  const [baselineSince, setBaselineSince] = useState(null);
   const [profile, setProfile] = useState(() => loadProfile());
   const [view, setView] = useState(() => (hasProfile() ? "form" : "onboarding"));
 
-  const handlePredictionReceived = (data, resultPrediction, resultBaselines) => {
+  const handlePredictionReceived = (
+    data,
+    resultPrediction,
+    resultBaselines,
+    resultBaselineSince
+  ) => {
     setPatientData(data);
     setPrediction(resultPrediction);
     setBaselines(resultBaselines);
+    setBaselineSince(resultBaselineSince);
     setView("dashboard");
   };
 
@@ -37,7 +44,7 @@ export default function App() {
     Object.entries(baselines).map(([metric, result]) => [metric, result.current])
   );
   const baselineData = {
-    recordedAt: "local assessment history",
+    recordedAt: baselineSince ? baselineSince.slice(0, 10) : "first personal assessment",
     risk_scores: baselines,
   };
 

@@ -78,7 +78,7 @@ export default function PatientForm({ onPredictionReceived, initialData }) {
         prediction,
         baselines,
       });
-      onPredictionReceived(normalized, prediction, baselines);
+      onPredictionReceived(normalized, prediction, baselines, history[0]?.timestamp);
     } catch (error) {
       setSubmitError(error.message || "Something went wrong. Please try again.");
     } finally {

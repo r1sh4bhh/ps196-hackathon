@@ -53,7 +53,7 @@ describe("assessmentHistory", () => {
   it("caps each patient's history at 100 assessments", () => {
     for (let index = 0; index < 101; index += 1) {
       saveAssessment(
-        assessment(`a${index}`, "P001", `2026-01-${String(index + 1).padStart(3, "0")}`)
+        assessment(`a${index}`, "P001", new Date(Date.UTC(2026, 0, index + 1)).toISOString())
       );
     }
 
