@@ -26,7 +26,7 @@ export function getRiskTier(band) {
     elevated: "moderate",
     "stage 1": "moderate",
     low: "low",
-  }[value] || "low";
+  }[value] || null;
 }
 
 export default function DashboardShell({
@@ -96,7 +96,7 @@ export default function DashboardShell({
           const tier = getRiskTier(detail?.band);
 
           return (
-            <div className={`summary-card risk-tier-${tier}`} key={disease}>
+            <div className={`summary-card${tier ? ` risk-tier-${tier}` : ""}`} key={disease}>
               <span className="disease-name">{disease.replace(/_/g, " ")}</span>
               <span className="risk-value">{Math.round(score * 100)}%</span>
               {detail?.band ? (
