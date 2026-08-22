@@ -5,7 +5,8 @@ import SymptomFields from "./SymptomFields";
 import LabFields from "./LabFields";
 import { validatePatientData } from "../../utils/validation";
 import { submitPatientData } from "../../api/predictService";
-import { savePatientRecord } from "../../utils/storage";
+import { computeAllBaselines } from "../../utils/baseline";
+import { listAssessments, saveAssessment } from "../../storage/assessmentHistory";
 import "./patientForm.css";
 
 const initialState = {
@@ -69,8 +70,15 @@ export default function PatientForm({ onPredictionReceived, initialData }) {
     setIsSubmitting(true);
     try {
       const prediction = await submitPatientData(normalized);
-      savePatientRecord(normalized, prediction);
-      onPredictionReceived(normalized, prediction);
+      const history = listAssessments(normalized.patientId);
+      const baselines = computeAllBaselines(history, normalized);
+      saveAssessment({
+        patientId: normalized.patientId,
+        patientData: normalized,
+        prediction,
+        baselines,
+      });
+      onPredictionReceived(normalized, prediction, baselines);
     } catch (error) {
       setSubmitError(error.message || "Something went wrong. Please try again.");
     } finally {
