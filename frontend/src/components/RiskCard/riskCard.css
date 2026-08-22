@@ -1,0 +1,79 @@
+.risk-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.risk-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e1e6e4;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.risk-card-top {
+  border-color: #2f6f5e;
+  box-shadow: 0 0 0 1px #2f6f5e;
+}
+
+.top-badge {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  background: #2f6f5e;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.risk-card-disease {
+  font-size: 13px;
+  color: #6b7c78;
+  text-transform: capitalize;
+}
+
+.risk-card-score {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.risk-card-bar-track {
+  height: 6px;
+  border-radius: 4px;
+  background: #eef1f0;
+  overflow: hidden;
+}
+
+.risk-card-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.severity-high .risk-card-score {
+  color: #c0392b;
+}
+
+.severity-high .risk-card-bar-fill {
+  background: #c0392b;
+}
+
+.severity-medium .risk-card-score {
+  color: #d68910;
+}
+
+.severity-medium .risk-card-bar-fill {
+  background: #d68910;
+}
+
+.severity-low .risk-card-score {
+  color: #2f6f5e;
+}
+
+.severity-low .risk-card-bar-fill {
+  background: #2f6f5e;
+}

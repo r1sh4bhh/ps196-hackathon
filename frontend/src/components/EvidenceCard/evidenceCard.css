@@ -1,0 +1,50 @@
+.evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evidence-card {
+  background: #fff;
+  border: 1px solid #e1e6e4;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.evidence-disease {
+  margin: 0 0 8px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.evidence-factors {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #6b7c78;
+  text-transform: capitalize;
+}
+
+.evidence-next-test {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  border-top: 1px dashed #e1e6e4;
+  padding-top: 8px;
+}
+
+.next-test-label {
+  color: #6b7c78;
+}
+
+.next-test-value {
+  font-weight: 600;
+  color: #2f6f5e;
+}
+
+.evidence-empty {
+  padding: 24px;
+  text-align: center;
+  color: #6b7c78;
+  font-size: 13px;
+}
