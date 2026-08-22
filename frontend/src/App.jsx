@@ -43,10 +43,12 @@ export default function App() {
   const baselineCurrent = Object.fromEntries(
     Object.entries(baselines).map(([metric, result]) => [metric, result.current])
   );
-  const baselineData = {
-    recordedAt: baselineSince ? baselineSince.slice(0, 10) : "first personal assessment",
-    risk_scores: baselines,
-  };
+  const baselineData = Object.keys(baselines).length
+    ? {
+        recordedAt: baselineSince ? baselineSince.slice(0, 10) : "first personal assessment",
+        risk_scores: baselines,
+      }
+    : null;
 
   const handleLoadDemoHistory = () => {
     demoPatientHistory.forEach(saveAssessment);
