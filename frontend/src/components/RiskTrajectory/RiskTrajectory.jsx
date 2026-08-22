@@ -35,9 +35,9 @@ export default function RiskTrajectory({
     <div className="trajectory-container">
       <h3 className="trajectory-title">{label}</h3>
       <svg width={width} height={height} className="trajectory-svg">
-        <path d={pathD} fill="none" stroke="#2f6f5e" strokeWidth="2" />
+        <path d={pathD} fill="none" stroke="var(--color-primary)" strokeWidth="2" />
         {points.map((point) => (
-          <circle key={point.day} cx={point.x} cy={point.y} r="4" fill="#2f6f5e" />
+          <circle key={point.day} cx={point.x} cy={point.y} r="4" fill="var(--color-primary)" />
         ))}
       </svg>
       <div className="trajectory-labels">

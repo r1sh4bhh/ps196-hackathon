@@ -157,22 +157,24 @@ const SymptomInput = forwardRef(function SymptomInput(
       {parsed.ambiguous.map((item, index) => (
         <label className="symptom-review-group" key={`${item.matchedText}-${index}`}>
           <strong>What did “{item.matchedText}” mean?</strong>
-          <select
-            defaultValue=""
-            onChange={(event) => {
-              add(event.target.value);
-              dismiss("ambiguous", index);
-            }}
-          >
-            <option value="" disabled>
-              Choose a symptom
-            </option>
-            {item.candidates.map((candidate) => (
-              <option value={candidate} key={candidate}>
-                {SYMPTOM_LABELS[candidate]}
+          <span className="select-control">
+            <select
+              defaultValue=""
+              onChange={(event) => {
+                add(event.target.value);
+                dismiss("ambiguous", index);
+              }}
+            >
+              <option value="" disabled>
+                Choose a symptom
               </option>
-            ))}
-          </select>
+              {item.candidates.map((candidate) => (
+                <option value={candidate} key={candidate}>
+                  {SYMPTOM_LABELS[candidate]}
+                </option>
+              ))}
+            </select>
+          </span>
         </label>
       ))}
 
@@ -188,16 +190,18 @@ const SymptomInput = forwardRef(function SymptomInput(
       )}
 
       <div className="symptom-manual-pick">
-        <select value={manualPick} onChange={(event) => setManualPick(event.target.value)}>
-          <option value="" disabled>
-            Select a symptom…
-          </option>
-          {CANONICAL_SYMPTOMS.map((symptom) => (
-            <option value={symptom} key={symptom}>
-              {SYMPTOM_LABELS[symptom]}
+        <span className="select-control">
+          <select value={manualPick} onChange={(event) => setManualPick(event.target.value)}>
+            <option value="" disabled>
+              Select a symptom…
             </option>
-          ))}
-        </select>
+            {CANONICAL_SYMPTOMS.map((symptom) => (
+              <option value={symptom} key={symptom}>
+                {SYMPTOM_LABELS[symptom]}
+              </option>
+            ))}
+          </select>
+        </span>
         <button
           type="button"
           disabled={!manualPick}

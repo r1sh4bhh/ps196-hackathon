@@ -1,13 +1,14 @@
 .next-test-card {
-  background: #eef5f2;
-  border-radius: 12px;
-  padding: 16px;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 
 .next-test-title {
-  margin: 0 0 10px;
-  font-size: 14px;
-  color: #234f42;
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text);
 }
 
 .next-test-list {
@@ -16,22 +17,22 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .next-test-item {
   display: flex;
   flex-direction: column;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .next-test-name {
   font-weight: 600;
-  color: #1c2b27;
+  color: var(--color-text);
 }
 
 .next-test-reason {
-  color: #6b7c78;
-  font-size: 12px;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
   text-transform: capitalize;
 }
