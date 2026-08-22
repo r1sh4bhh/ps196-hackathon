@@ -548,9 +548,13 @@ def vector_and_defaulted_features_from_patient_heart(
         except (TypeError, ValueError):
             fbs = None
 
+    sex = demographics.get("sex", demographics.get("gender"))
+    if isinstance(sex, str):
+        sex = HEART_VALUE_MAPS["sex"].get(sex.strip().lower())
+
     lookup: dict[str, Any] = {
         "age": demographics.get("age"),
-        "sex": demographics.get("sex", demographics.get("gender")),
+        "sex": sex,
         "cp": labs.get("cp", labs.get("chest_pain_type")),
         "trestbps": vitals.get("systolic_bp"),
         "chol": labs.get("cholesterol"),

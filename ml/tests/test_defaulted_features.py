@@ -58,6 +58,7 @@ class DefaultedFeatureTests(unittest.TestCase):
             defaulted,
             ["cp", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal"],
         )
+        self.assertNotIn("sex", defaulted)
 
     def test_heart_measured_model_fields_are_not_reported_as_defaulted(self):
         patient = self.intake_patient()
