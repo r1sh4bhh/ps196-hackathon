@@ -4,6 +4,7 @@ import "./riskTrajectory.css";
 export default function RiskTrajectory({
   trajectory,
   label = "Projected Risk Trend",
+  pointLabel = "Day",
 }) {
   if (!trajectory || trajectory.length === 0) {
     return <div className="trajectory-empty">No trajectory data available.</div>;
@@ -42,7 +43,9 @@ export default function RiskTrajectory({
       </svg>
       <div className="trajectory-labels">
         {trajectory.map((point) => (
-          <span key={point.day}>Day {point.day}</span>
+          <span key={point.day}>
+            {pointLabel} {point.day}
+          </span>
         ))}
       </div>
     </div>

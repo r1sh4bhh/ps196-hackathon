@@ -25,13 +25,14 @@ function QuestionField({ question, value, error, onChange, symptomInputRef }) {
 
   if (question.type === "boolean") {
     return (
-      <label className="field">
-        <span>{question.label}</span>
+      <label className="field field-checkbox">
         <input
           type="checkbox"
+          className="checkbox-control"
           checked={Boolean(value)}
           onChange={(event) => handleChange(event.target.checked)}
         />
+        <span>{question.label}</span>
       </label>
     );
   }

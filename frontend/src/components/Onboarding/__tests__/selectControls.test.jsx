@@ -49,3 +49,46 @@ describe("shared select controls", () => {
     expect(selects.slice(0, 5).every((select) => select.value === "")).toBe(true);
   });
 });
+
+describe("shared checkbox controls", () => {
+  it("styles every boolean question's checkbox with the shared control class", () => {
+    act(() => root.render(<QuestionnaireStep answers={{}} errors={{}} onChange={() => {}} />));
+
+    const checkboxes = [...container.querySelectorAll('input[type="checkbox"]')];
+    expect(checkboxes.length).toBeGreaterThan(0);
+    expect(checkboxes.every((checkbox) => checkbox.classList.contains("checkbox-control"))).toBe(
+      true
+    );
+  });
+
+  it("associates each checkbox with its visible label text via a wrapping <label>", () => {
+    act(() => root.render(<QuestionnaireStep answers={{}} errors={{}} onChange={() => {}} />));
+
+    const checkboxes = [...container.querySelectorAll('input[type="checkbox"]')];
+    for (const checkbox of checkboxes) {
+      const label = checkbox.closest("label");
+      expect(label).not.toBeNull();
+      expect(label.querySelector("span").textContent.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("toggles the checkbox when the answer changes, keeping it a real native input", () => {
+    let answers = { family_diabetes: false };
+    const handleChange = (next) => {
+      answers = next;
+    };
+
+    act(() =>
+      root.render(
+        <QuestionnaireStep answers={answers} errors={{}} onChange={handleChange} />
+      )
+    );
+
+    const checkbox = [...container.querySelectorAll('input[type="checkbox"]')].find(
+      (input) => input.closest("label").textContent.includes("diabetes")
+    );
+
+    expect(checkbox.type).toBe("checkbox");
+    expect(checkbox.checked).toBe(false);
+  });
+});

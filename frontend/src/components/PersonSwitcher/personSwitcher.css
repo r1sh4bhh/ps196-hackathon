@@ -1,0 +1,25 @@
+.person-switcher {
+  max-width: 640px;
+  margin: 0 auto var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.person-switcher-current strong {
+  color: var(--color-text);
+}
+
+.person-switcher-select-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.person-switcher-select-label .form-control {
+  min-height: 2.25rem;
+}
