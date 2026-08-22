@@ -16,6 +16,21 @@ The public dataset CSVs use inconsistent naming (``BloodPressure`` in Pima,
 ``trestbps`` in Cleveland, ``thalch`` vs ``thalach`` between Cleveland
 mirrors). ``normalise_columns`` maps all known variants onto the canonical
 names frozen in ``ml/feature_spec.py`` so downstream code sees one vocabulary.
+
+Categorical encoding
+--------------------
+Some mirrors of the UCI heart data ship ``sex``, ``cp``, ``exang``, ``slope``
+and ``thal`` as human-readable text rather than the original numeric codes.
+These are decoded with **explicit value maps**, never with
+``pandas.Categorical.codes``.
+
+That distinction is important. ``cat.codes`` assigns integers in alphabetical
+order, so ``thal`` would become ``fixed defect=0, normal=1, reversable=2`` -
+while the original UCI encoding is ``normal=3, fixed defect=6,
+reversable defect=7``. Inference would then send a value meaning one thing
+and the model would interpret it as another, with no error raised anywhere.
+Silent disagreements about what a number means are precisely what the frozen
+feature spec exists to prevent.
 """
 
 from __future__ import annotations
@@ -47,6 +62,7 @@ __all__ = [
     "compute_imputation_medians",
     "vector_from_patient_diabetes",
     "vector_from_patient_heart",
+    "HEART_VALUE_MAPS",
     "PreprocessingError",
 ]
 
@@ -102,6 +118,76 @@ _COLUMN_ALIASES: dict[str, str] = {
 }
 
 
+# Explicit text -> numeric maps for the UCI heart data. Keys are lowercased
+# and stripped before lookup. Values follow the ORIGINAL UCI encoding so that
+# the numbers mean the same thing here, in the model, and in
+# vector_from_patient_heart below.
+HEART_VALUE_MAPS: dict[str, dict[str, float]] = {
+    "sex": {
+        "male": 1.0,
+        "m": 1.0,
+        "female": 0.0,
+        "f": 0.0,
+    },
+    "cp": {
+        "typical angina": 1.0,
+        "atypical angina": 2.0,
+        "non-anginal": 3.0,
+        "non-anginal pain": 3.0,
+        "asymptomatic": 4.0,
+    },
+    "fbs": {
+        "true": 1.0,
+        "false": 0.0,
+        "yes": 1.0,
+        "no": 0.0,
+    },
+    "restecg": {
+        "normal": 0.0,
+        "st-t abnormality": 1.0,
+        "st-t wave abnormality": 1.0,
+        "lv hypertrophy": 2.0,
+        "left ventricular hypertrophy": 2.0,
+    },
+    "exang": {
+        "true": 1.0,
+        "false": 0.0,
+        "yes": 1.0,
+        "no": 0.0,
+    },
+    "slope": {
+        "upsloping": 1.0,
+        "flat": 2.0,
+        "downsloping": 3.0,
+    },
+    "thal": {
+        "normal": 3.0,
+        "fixed defect": 6.0,
+        "reversable defect": 7.0,
+        "reversible defect": 7.0,
+    },
+}
+
+# Values used when the intake form does not supply a field. These MUST be
+# expressible in the same encoding as HEART_VALUE_MAPS above - sending cp=0 or
+# thal=2 would be sending a code that does not exist in the training data.
+HEART_DEFAULTS: dict[str, float] = {
+    "age": 50.0,
+    "sex": 0.0,
+    "cp": 4.0,  # asymptomatic - the neutral presentation for screening
+    "trestbps": 130.0,
+    "chol": 240.0,
+    "fbs": 0.0,
+    "restecg": 0.0,  # normal
+    "thalach": 150.0,
+    "exang": 0.0,
+    "oldpeak": 0.0,
+    "slope": 2.0,  # flat - the modal value in Cleveland
+    "ca": 0.0,
+    "thal": 3.0,  # normal, in the 3/6/7 encoding
+}
+
+
 def normalise_columns(frame: pd.DataFrame) -> pd.DataFrame:
     """Return a copy of ``frame`` with canonical lowercase column names."""
     renamed = {}
@@ -109,6 +195,37 @@ def normalise_columns(frame: pd.DataFrame) -> pd.DataFrame:
         key = str(column).strip().lower().replace(" ", "").replace("-", "")
         renamed[column] = _COLUMN_ALIASES.get(key, str(column).strip().lower().replace(" ", "_"))
     return frame.rename(columns=renamed)
+
+
+def _decode_heart_column(series: pd.Series, name: str) -> pd.Series:
+    """Convert one heart-data column to float, decoding text via explicit maps.
+
+    Handles three shapes seen across mirrors: already numeric, boolean
+    (``True``/``False`` for fbs and exang), and human-readable text.
+
+    Note this checks for text with ``pandas.api.types.is_numeric_dtype``
+    rather than ``dtype == object``. Under pandas 3.0 string columns are
+    ``StringDtype``, not ``object``, so an object-identity check silently
+    fails to fire and the strings reach ``astype(float)``.
+    """
+    if pd.api.types.is_bool_dtype(series):
+        return series.astype(float)
+
+    if pd.api.types.is_numeric_dtype(series):
+        return series.astype(float)
+
+    text = series.astype("string").str.strip().str.lower()
+
+    # A mirror may ship numbers stored as text; take those directly.
+    numeric = pd.to_numeric(text, errors="coerce")
+
+    value_map = HEART_VALUE_MAPS.get(name)
+    if value_map is not None:
+        mapped = text.map(value_map)
+        # Prefer the explicit map, fall back to any parsed number.
+        numeric = mapped.astype(float).fillna(numeric)
+
+    return numeric.astype(float)
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +287,11 @@ def compute_imputation_medians(frame: pd.DataFrame) -> dict[str, float]:
     inference time. Recomputing them from a single patient record at inference
     would be meaningless, and using a different value than training saw is
     exactly the train/serve skew this module exists to prevent.
+
+    Callers that are about to evaluate a model should pass ONLY the training
+    split here. Computing medians over the full dataset lets test-set values
+    influence the imputation, which leaks information across the split and
+    flatters the reported metrics.
     """
     frame = normalise_columns(frame)
     medians: dict[str, float] = {}
@@ -190,6 +312,12 @@ def prepare_diabetes_features(
     insulin or BMI is a *missing reading*, not a measurement - a living person
     does not have a blood pressure of zero. Left untouched these zeros drag
     the decision boundaries toward physiologically impossible values.
+
+    Args:
+        frame: Raw or normalised Pima data.
+        medians: Pre-computed medians to apply. Pass the training-split
+            medians when preparing a test split, so no test information is
+            used to impute.
 
     Returns:
         ``(features, labels_or_None, medians_used)``
@@ -260,7 +388,7 @@ def vector_from_patient_diabetes(
 # Model C - cardiac risk
 # ---------------------------------------------------------------------------
 def prepare_heart_features(frame: pd.DataFrame) -> tuple[np.ndarray, pd.Series | None]:
-    """Prepare Cleveland features.
+    """Prepare heart features, decoding text categoricals via explicit maps.
 
     The UCI original encodes missing values as ``?`` in ``ca`` and ``thal``;
     these become NaN and are median-imputed. The target is binarised: the raw
@@ -278,15 +406,12 @@ def prepare_heart_features(frame: pd.DataFrame) -> tuple[np.ndarray, pd.Series |
 
     features = frame[list(MODEL_C_FEATURES)].copy()
 
-    # Categorical text (some mirrors ship strings for sex/cp/exang) -> codes.
     for column in features.columns:
-        if features[column].dtype == object:
-            converted = pd.to_numeric(features[column], errors="coerce")
-            if converted.isna().all():
-                converted = features[column].astype("category").cat.codes.astype(float)
-            features[column] = converted
+        features[column] = _decode_heart_column(features[column], column)
 
-    features = features.astype(float)
+    # Any value that neither parsed as a number nor matched a known category
+    # is now NaN. Impute with the column median, then zero as a last resort
+    # for a column that is entirely missing.
     features = features.fillna(features.median(numeric_only=True)).fillna(0.0)
 
     labels = None
@@ -301,16 +426,18 @@ def vector_from_patient_heart(patient: dict[str, Any]) -> list[float]:
     """Build one ordered Model C vector from a normalised patient record.
 
     Fields the intake form does not collect (``ca``, ``thal``, ``slope``,
-    ``oldpeak``) default to their dataset-typical values. This is a real
-    limitation and is documented in ml/README.md: cardiac risk from a partial
-    record is a coarser estimate than the model's headline metrics imply.
+    ``oldpeak``) fall back to ``HEART_DEFAULTS``, which are expressed in the
+    same encoding the model was trained on. This is a real limitation and is
+    surfaced to the caller as ``partial_input: true``: cardiac risk from a
+    partial record is a coarser estimate than the model's headline metrics
+    imply.
     """
     vitals = patient.get("vitals") or {}
     labs = patient.get("labs") or {}
     demographics = patient.get("demographics") or {}
 
     sex = demographics.get("sex") or demographics.get("gender") or ""
-    sex_code = 1.0 if str(sex).strip().lower() in {"m", "male", "1"} else 0.0
+    sex_code = HEART_VALUE_MAPS["sex"].get(str(sex).strip().lower(), HEART_DEFAULTS["sex"])
 
     glucose = labs.get("glucose")
     try:
@@ -319,28 +446,38 @@ def vector_from_patient_heart(patient: dict[str, Any]) -> list[float]:
         fbs = 0.0
 
     lookup: dict[str, Any] = {
-        "age": demographics.get("age", 50),
+        "age": demographics.get("age"),
         "sex": sex_code,
-        "cp": labs.get("chest_pain_type", 0),
-        "trestbps": vitals.get("systolic_bp", 130),
-        "chol": labs.get("cholesterol", 240),
+        "cp": labs.get("chest_pain_type"),
+        "trestbps": vitals.get("systolic_bp"),
+        "chol": labs.get("cholesterol"),
         "fbs": fbs,
-        "restecg": labs.get("resting_ecg", 0),
-        "thalach": vitals.get("max_heart_rate", vitals.get("heart_rate", 150)),
-        "exang": labs.get("exercise_angina", 0),
-        "oldpeak": labs.get("st_depression", 0.0),
-        "slope": labs.get("st_slope", 1),
-        "ca": labs.get("major_vessels", 0),
-        "thal": labs.get("thalassemia", 2),
+        "restecg": labs.get("resting_ecg"),
+        "thalach": vitals.get("max_heart_rate", vitals.get("heart_rate")),
+        "exang": labs.get("exercise_angina"),
+        "oldpeak": labs.get("st_depression"),
+        "slope": labs.get("st_slope"),
+        "ca": labs.get("major_vessels"),
+        "thal": labs.get("thalassemia"),
     }
 
     vector: list[float] = []
     for name in MODEL_C_FEATURES:
         value = lookup.get(name)
+
+        # Allow text for the categorical fields, decoded the same way the
+        # training data was.
+        if isinstance(value, str) and name in HEART_VALUE_MAPS:
+            value = HEART_VALUE_MAPS[name].get(value.strip().lower())
+
+        if value is None or value == "":
+            vector.append(HEART_DEFAULTS[name])
+            continue
+
         try:
             vector.append(float(value))
         except (TypeError, ValueError):
-            vector.append(0.0)
+            vector.append(HEART_DEFAULTS[name])
 
     validate_vector("model_c", vector, MODEL_C_FEATURES)
     return vector
