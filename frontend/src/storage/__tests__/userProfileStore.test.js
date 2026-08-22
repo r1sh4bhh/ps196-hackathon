@@ -134,6 +134,21 @@ describe("userProfileStore", () => {
     expect(loadLabResults("legacy")).toEqual({});
   });
 
+  it("never re-dates a reused lab when its original record is unavailable", () => {
+    saveProfile({ patientId: "P001" });
+
+    saveLabResults(
+      "P001",
+      { glucose: 101 },
+      {
+        recordedAt: "2026-08-22T10:00:00.000Z",
+        reusedLabs: { glucose: true },
+      }
+    );
+
+    expect(loadLabResults("P001")).toEqual({});
+  });
+
   it("does not switch the active person to one that was never saved", () => {
     saveProfile({ patientId: "P001" });
     expect(setActivePatientId("does-not-exist")).toBe(false);

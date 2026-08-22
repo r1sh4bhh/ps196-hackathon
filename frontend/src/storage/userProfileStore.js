@@ -184,7 +184,7 @@ export function saveLabResults(
     if (!Number.isFinite(numeric)) {
       continue;
     }
-    if (reusedLabs[key] && labResults[key]) {
+    if (reusedLabs[key]) {
       continue;
     }
     labResults[key] = { value: numeric, recordedAt: new Date(recordedAt).toISOString() };
