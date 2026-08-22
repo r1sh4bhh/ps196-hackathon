@@ -114,6 +114,27 @@ Response Body:
 }
 ```
 
+### Additive fields (optional, may be absent)
+
+When the real ML layer (`USE_MOCK_ML=false`) produces a prediction, the response also
+includes:
+
+- `source`: `"model"` when the result came from the trained models/rules, or `"mock"`
+  when it fell back to the mock layer (see `fallback_reason` below).
+- `fallback_reason` (mock only): why the real ML layer was unavailable.
+- `ml_detail`: the full output of `ml/inference/inference.py`, preserved rather than
+  discarded so the honest caveats survive the trip to the frontend. Includes
+  `symptom_differential`, `diabetes_risk`, `cardiac_risk`, `hypertension`, `obesity`,
+  `review_priority`, `degraded`, and `disclaimer` — in particular the `partial_input`,
+  `missing_key_inputs`, `risk_band`, `confidence_is_ranking_only`, and `sparse_input`
+  flags nested within those sections. The frontend may ignore this field today; it must
+  not be removed from the response.
+- `trajectory[].illustrative`: `true` on every point — the trajectory is a placeholder
+  curve (today's top risk plus a fixed increment per day), not a model forecast.
+
+None of these change the existing `risk_scores` / `top_disease` / `confidence` /
+`trajectory` / `evidence` shape above.
+
 ### Error Response
 
 **Backend → Frontend**

@@ -6,6 +6,8 @@ build/
 *.log
 .DS_Store
 coverage/
+__pycache__/
+*.pyc
 
 ml/data/*.csv
 !ml/data/fixtures/*.csv

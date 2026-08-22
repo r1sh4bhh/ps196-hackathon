@@ -1,24 +1,36 @@
+const { runInference } = require("./pythonBridge");
+const { toMlInput, fromMlOutput } = require("./patientMapper");
+
 const USE_MOCK_ML = process.env.USE_MOCK_ML !== "false";
 
-async function getRiskPrediction(normalizedData) {
+// `patientData` is the raw request payload (mg/dL, mmHg, kg, cm) and is the
+// only thing that may reach the Python layer. `normalizedData` is the 0-1
+// scaled output of normalizePatientData and is what the mock path expects --
+// getMockMlOutput reads normalizedData.labs_normalized.glucose on a 0-1
+// scale. Do not swap these: sending normalized data to Python turns a
+// glucose of 130 mg/dL into 0.15 and the model will confidently score
+// nonsense with no error raised anywhere.
+async function getRiskPrediction(patientData, normalizedData) {
   if (USE_MOCK_ML) {
     return getMockMlOutput(normalizedData);
   }
 
   try {
-    return await callRealMlLayer(normalizedData);
+    return await callRealMlLayer(patientData);
   } catch (error) {
     console.warn(
       "[mlClient] Real ML layer unavailable, falling back to mock:",
       error.message
     );
-    return getMockMlOutput(normalizedData);
+    const mockResult = getMockMlOutput(normalizedData);
+    return { ...mockResult, source: "mock", fallback_reason: error.message };
   }
 }
 
-async function callRealMlLayer(normalizedData) {
-  void normalizedData;
-  throw new Error("Real ML layer not yet integrated");
+async function callRealMlLayer(patientData) {
+  const mlInput = toMlInput(patientData);
+  const mlOutput = await runInference(mlInput);
+  return fromMlOutput(mlOutput);
 }
 
 function getMockMlOutput(normalizedData) {
@@ -44,6 +56,7 @@ function getMockMlOutput(normalizedData) {
     risk_scores,
     top_disease,
     confidence: risk_scores[top_disease],
+    source: "mock",
   };
 }
 

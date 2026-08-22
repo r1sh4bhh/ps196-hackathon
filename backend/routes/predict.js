@@ -25,9 +25,17 @@ router.post("/", async (req, res) => {
 
   try {
     const normalized = normalizePatientData(patientData);
-    const mlOutput = await getRiskPrediction(normalized);
+    // Real ML gets the raw `patientData` (mg/dL, mmHg, kg, cm); the mock
+    // path gets `normalized` (0-1 scale), which is what getMockMlOutput
+    // expects. Do not swap these -- normalized values reaching the Python
+    // layer produce confident, meaningless predictions with no error raised.
+    const mlOutput = await getRiskPrediction(patientData, normalized);
     const prediction = buildPredictionResponse(mlOutput, patientData);
 
+    // A degraded/partial result is still clinically useful screening output
+    // -- the payload already states what's missing -- so it is a 200, not
+    // an error. Only bad input or a total ML failure with no mock fallback
+    // should be non-200.
     return res.status(200).json({
       status: "success",
       prediction,
@@ -42,20 +50,37 @@ router.post("/", async (req, res) => {
 });
 
 function buildPredictionResponse(mlOutput, patientData) {
-  return {
+  const response = {
     risk_scores: mlOutput.risk_scores,
     top_disease: mlOutput.top_disease,
     confidence: mlOutput.confidence,
     trajectory: buildTrajectory(mlOutput.risk_scores[mlOutput.top_disease]),
     evidence: buildEvidence(mlOutput.top_disease, patientData),
   };
+
+  if (mlOutput.ml_detail) {
+    response.ml_detail = mlOutput.ml_detail;
+  }
+  if (mlOutput.source) {
+    response.source = mlOutput.source;
+  }
+  if (mlOutput.fallback_reason) {
+    response.fallback_reason = mlOutput.fallback_reason;
+  }
+
+  return response;
 }
 
+// Placeholder illustrative curve, NOT a prediction: it adds a fixed 0.01/day
+// to today's top risk, which is a straight line, not a forecast. Marked
+// `illustrative: true` so the UI can label it honestly instead of presenting
+// invented data as a real trajectory.
 function buildTrajectory(baseRisk) {
   const risk = typeof baseRisk === "number" ? baseRisk : 0.5;
   return [1, 2, 3, 4, 5].map((day) => ({
     day,
     risk: clamp(round(risk + day * 0.01), 0, 0.99),
+    illustrative: true,
   }));
 }
 
