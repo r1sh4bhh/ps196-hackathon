@@ -17,6 +17,6 @@ export function buildRiskTrajectory(assessments, disease) {
       return { timestamp: assessment.timestamp, risk: numericRisk };
     })
     .filter(Boolean)
-    .sort((first, second) => String(first.timestamp).localeCompare(String(second.timestamp)))
+    .sort((first, second) => (first.timestamp < second.timestamp ? -1 : first.timestamp > second.timestamp ? 1 : 0))
     .map((point, index) => ({ day: index + 1, risk: point.risk, timestamp: point.timestamp }));
 }

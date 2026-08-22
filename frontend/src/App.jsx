@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import PatientForm from "./components/PatientForm/PatientForm";
 import DashboardShell from "./components/Dashboard/DashboardShell";
 import OnboardingWizard from "./components/Onboarding/OnboardingWizard";
@@ -101,6 +101,19 @@ export default function App() {
 
   const initialFormData = buildPatientDataFromProfile(profile);
   const isReturningVisit = hasReturnVisitHistory(profile?.patientId);
+  // Re-read the saved-people list only when the active profile changes (add,
+  // switch, onboarding, or redo), rather than on every render. `profile` is
+  // used only as a cache-invalidation signal here, not read directly.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const savedProfiles = useMemo(() => listProfiles(), [profile]);
+  const clinicianPatients = useMemo(
+    () =>
+      savedProfiles.map((savedProfile) => ({
+        patientId: savedProfile.patientId,
+        latestAssessment: latestAssessment(savedProfile.patientId),
+      })),
+    [savedProfiles]
+  );
   const baselineCurrent = Object.fromEntries(
     Object.entries(baselines).map(([metric, result]) => [metric, result.current])
   );
@@ -130,10 +143,7 @@ export default function App() {
 
       {view === "clinician-list" && (
         <ClinicianPatientList
-          patients={listProfiles().map((savedProfile) => ({
-            patientId: savedProfile.patientId,
-            latestAssessment: latestAssessment(savedProfile.patientId),
-          }))}
+          patients={clinicianPatients}
           onSelectPatient={handleSwitchPerson}
           onAddPatient={handleAddPerson}
         />
@@ -145,7 +155,7 @@ export default function App() {
         <>
           {role === ROLES.PATIENT && (
             <PersonSwitcher
-              profiles={listProfiles()}
+              profiles={savedProfiles}
               activePatientId={profile?.patientId}
               onSwitch={handleSwitchPerson}
               onAddPerson={handleAddPerson}
