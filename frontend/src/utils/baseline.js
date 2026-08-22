@@ -1,5 +1,22 @@
 export const MIN_OBSERVATIONS = 3;
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Blood pressure, heart rate, weight, and glucose all have meaningful
+// diurnal variation, so a handful of readings taken within a single day
+// characterise one moment, not a person's typical value. A baseline must
+// span at least this long, in addition to meeting MIN_OBSERVATIONS.
+export const MIN_BASELINE_SPAN_MS = MS_PER_DAY;
+
+// Heuristic for "clustered" readings: if a large majority of observations
+// fall inside a small slice of the total observed span, the mean is really
+// describing one sitting plus a lone outlier that happened to satisfy the
+// 24-hour span check. This doesn't invalidate the baseline - it's still
+// real data - but it should be disclosed rather than presented as if the
+// readings were evenly spread across the whole span.
+const CLUSTER_MAJORITY_FRACTION = 0.8;
+const CLUSTER_WINDOW_FRACTION = 0.1;
+
 export const BASELINE_METRICS = {
   systolic_bp: { label: "Systolic blood pressure", unit: "mmHg", path: ["vitals", "systolic_bp"] },
   diastolic_bp: {
@@ -19,17 +36,38 @@ export const BASELINE_METRICS = {
 
 export function computeBaseline(metric, history, currentValue) {
   const observations = Array.isArray(history)
-    ? history.map((entry) => toNumber(entry?.value)).filter((value) => value !== null)
+    ? history
+        .map((entry) => ({ value: toNumber(entry?.value), timestamp: toTimestamp(entry?.timestamp) }))
+        .filter((entry) => entry.value !== null)
     : [];
+  const values = observations.map((entry) => entry.value);
   const current = toNumber(currentValue);
-  const status =
-    current === null || observations.length === 0
-      ? "unavailable"
-      : observations.length < MIN_OBSERVATIONS
-        ? "establishing"
-        : "established";
-  const baseline = status === "established" ? round(mean(observations)) : null;
-  const recentBaseline = observations.length ? round(mean(observations.slice(-5))) : null;
+
+  const sortedTimestamps = observations
+    .map((entry) => entry.timestamp)
+    .filter((timestamp) => timestamp !== null)
+    .sort((a, b) => a - b);
+  const spanMs =
+    sortedTimestamps.length >= 2
+      ? sortedTimestamps[sortedTimestamps.length - 1] - sortedTimestamps[0]
+      : 0;
+  const hasSufficientSpan = spanMs >= MIN_BASELINE_SPAN_MS;
+
+  let status;
+  if (current === null || observations.length === 0) {
+    status = "unavailable";
+  } else if (observations.length < MIN_OBSERVATIONS) {
+    status = "establishing";
+  } else if (!hasSufficientSpan) {
+    status = "insufficient_span";
+  } else {
+    status = "established";
+  }
+
+  const clustered = status === "established" && isClustered(sortedTimestamps, spanMs);
+
+  const baseline = status === "established" ? round(mean(values)) : null;
+  const recentBaseline = values.length ? round(mean(values.slice(-5))) : null;
   const difference = baseline === null ? null : round(current - baseline);
   const percentageChange =
     baseline === null || baseline === 0 ? null : round(((current - baseline) / baseline) * 100);
@@ -42,10 +80,39 @@ export function computeBaseline(metric, history, currentValue) {
     difference,
     percentage_change: percentageChange,
     direction: getDirection(current, baseline),
-    trend: getTrend(observations),
+    trend: getTrend(observations, status, clustered),
     observations: observations.length,
+    spanDays: sortedTimestamps.length >= 2 ? Math.round(spanMs / MS_PER_DAY) : null,
+    earliest: sortedTimestamps.length ? new Date(sortedTimestamps[0]).toISOString() : null,
+    latest: sortedTimestamps.length
+      ? new Date(sortedTimestamps[sortedTimestamps.length - 1]).toISOString()
+      : null,
+    clustered,
     status,
   };
+}
+
+// Concise, human-readable statement of what a baseline is (or isn't) built
+// from, so a reader never has to dig to see how much data backs the number
+// they're being compared against.
+export function describeBaselineProvenance(result) {
+  if (!result) {
+    return "";
+  }
+
+  const { observations, spanDays, status } = result;
+  const readingWord = observations === 1 ? "reading" : "readings";
+
+  if (status === "unavailable") {
+    return "No readings recorded yet.";
+  }
+  if (status === "establishing") {
+    return `${observations} ${readingWord} recorded; at least ${MIN_OBSERVATIONS} are needed before a baseline can be established.`;
+  }
+  if (status === "insufficient_span") {
+    return `${observations} ${readingWord} recorded, but they span under 24 hours; a baseline needs readings spread over at least a day.`;
+  }
+  return `Baseline from ${observations} ${readingWord} over ${spanDays} day${spanDays === 1 ? "" : "s"}.`;
 }
 
 export function computeAllBaselines(assessments, currentAssessment) {
@@ -103,18 +170,59 @@ function getDirection(current, baseline) {
   return current > baseline ? "above_baseline" : "below_baseline";
 }
 
-function getTrend(observations) {
+function getTrend(observations, status, clustered) {
+  // Insufficient span or clustering means we can't honestly say the mean is
+  // representative, so a trend derived from it would be misleading too -
+  // omit it rather than showing a flat or fabricated direction.
+  if (status !== "established" || clustered) {
+    return "unknown";
+  }
   if (observations.length < 4) {
     return "unknown";
   }
 
-  const midpoint = Math.floor(observations.length / 2);
-  const olderMean = mean(observations.slice(0, midpoint));
-  const newerMean = mean(observations.slice(midpoint));
+  const timed = observations
+    .filter((entry) => entry.timestamp !== null)
+    .sort((a, b) => a.timestamp - b.timestamp);
+  if (timed.length < 4) {
+    return "unknown";
+  }
+
+  // Split by elapsed time, not array position: a 5kg change over two days
+  // and over six months are clinically opposite findings and must not be
+  // computed the same way just because both have "n" observations.
+  const earliest = timed[0].timestamp;
+  const latest = timed[timed.length - 1].timestamp;
+  const midpoint = (earliest + latest) / 2;
+  const older = timed.filter((entry) => entry.timestamp <= midpoint).map((entry) => entry.value);
+  const newer = timed.filter((entry) => entry.timestamp > midpoint).map((entry) => entry.value);
+  if (older.length === 0 || newer.length === 0) {
+    return "unknown";
+  }
+
+  const olderMean = mean(older);
+  const newerMean = mean(newer);
   if (isWithinDeadBand(newerMean, olderMean)) {
     return "stable";
   }
   return newerMean > olderMean ? "rising" : "falling";
+}
+
+function isClustered(sortedTimestamps, spanMs) {
+  if (sortedTimestamps.length < 3 || spanMs <= 0) {
+    return false;
+  }
+
+  const majorityCount = Math.ceil(sortedTimestamps.length * CLUSTER_MAJORITY_FRACTION);
+  let minWindow = Infinity;
+  for (let index = 0; index + majorityCount - 1 < sortedTimestamps.length; index += 1) {
+    const window = sortedTimestamps[index + majorityCount - 1] - sortedTimestamps[index];
+    if (window < minWindow) {
+      minWindow = window;
+    }
+  }
+
+  return minWindow <= spanMs * CLUSTER_WINDOW_FRACTION;
 }
 
 function isWithinDeadBand(value, reference) {
@@ -136,4 +244,12 @@ function toNumber(value) {
     return null;
   }
   return Number(value);
+}
+
+function toTimestamp(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : null;
 }

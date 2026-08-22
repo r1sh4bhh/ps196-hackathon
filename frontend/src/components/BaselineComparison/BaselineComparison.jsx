@@ -1,7 +1,12 @@
 import React from "react";
-import { BASELINE_METRICS } from "../../utils/baseline";
+import { BASELINE_METRICS, describeBaselineProvenance } from "../../utils/baseline";
 import { formatMeasurement as formatValueWithUnit } from "../../utils/format";
 import "./baselineComparison.css";
+
+const BASELINE_STATUS_LABELS = {
+  establishing: "Personal baseline is still being established",
+  insufficient_span: "Not yet established - readings span too short a period",
+};
 
 export default function BaselineComparison({ current, baseline }) {
   if (!baseline) {
@@ -36,6 +41,8 @@ export default function BaselineComparison({ current, baseline }) {
             const isPersonalBaseline = typeof baseVal === "object" && baseVal !== null;
             const comparison = isPersonalBaseline ? baseVal : null;
             const delta = isPersonalBaseline ? comparison.difference : currVal - baseVal;
+            const notEstablished =
+              comparison?.status === "establishing" || comparison?.status === "insufficient_span";
 
             return (
               <tr key={metric}>
@@ -43,11 +50,22 @@ export default function BaselineComparison({ current, baseline }) {
                   {isPersonalBaseline ? BASELINE_METRICS[metric]?.label : formatDiseaseName(metric)}
                 </td>
                 <td>
-                  {comparison?.status === "establishing"
-                    ? "Personal baseline is still being established"
+                  {notEstablished
+                    ? BASELINE_STATUS_LABELS[comparison.status]
                     : isPersonalBaseline
                       ? formatMeasurement(comparison.baseline, metric)
                       : `${Math.round(baseVal * 100)}%`}
+                  {isPersonalBaseline ? (
+                    <div className="baseline-provenance">
+                      {describeBaselineProvenance(comparison)}
+                    </div>
+                  ) : null}
+                  {comparison?.clustered ? (
+                    <div className="baseline-cluster-note">
+                      Weighted toward one period - most of these readings were taken close
+                      together.
+                    </div>
+                  ) : null}
                 </td>
                 <td>
                   {isPersonalBaseline

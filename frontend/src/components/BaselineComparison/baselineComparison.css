@@ -47,6 +47,20 @@
   text-transform: capitalize;
 }
 
+.baseline-provenance {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  font-weight: normal;
+}
+
+.baseline-cluster-note {
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-warning);
+  font-weight: normal;
+}
+
 .delta-up {
   color: var(--color-danger);
   font-weight: 600;
