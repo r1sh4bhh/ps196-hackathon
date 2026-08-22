@@ -6,15 +6,14 @@ const CONFIDENCE_THRESHOLD = 0.5;
 // Builds a provenance-carrying observation from a raw parsed value. This
 // function must never throw — malformed input should degrade to a
 // `needs_review` observation instead of crashing the upload flow.
-export function toObservation({
-  rawName,
-  value,
-  unit,
-  refRange,
-  observedAt,
-  fileName,
-  parser,
-} = {}) {
+//
+// The argument is taken whole and destructured inside the body rather than in
+// the signature: a default parameter only covers `undefined`, so destructuring
+// `null` in the signature would throw before the try/catch below could catch it.
+export function toObservation(input) {
+  const { rawName, value, unit, refRange, observedAt, fileName, parser } =
+    input && typeof input === "object" ? input : {};
+
   try {
     const safeRawName = typeof rawName === "string" ? rawName : String(rawName ?? "");
     const key = resolveLabKey(safeRawName);
