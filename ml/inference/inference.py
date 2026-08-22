@@ -36,7 +36,7 @@ sys.path.insert(0, str(_HERE))
 
 MODEL_DIR = _ML_ROOT / "models"
 
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"
 
 
 # Screening thresholds, deliberately lower than the 0.5 a classifier uses by
@@ -54,6 +54,13 @@ SCHEMA_VERSION = "1.1.0"
 RISK_THRESHOLDS: dict[str, dict[str, float]] = {
     "diabetes": {"elevated": 0.30, "high": 0.60},
     "cardiac": {"elevated": 0.35, "high": 0.65},
+}
+
+# Inputs without which a score is mostly imputed medians rather than
+# measurement. Missing any of these caps the reported band - see _cap_band.
+KEY_INPUTS: dict[str, tuple[str, ...]] = {
+    "diabetes": ("glucose",),
+    "cardiac": ("cholesterol",),
 }
 
 
@@ -109,6 +116,24 @@ def _band(probability: float, kind: str) -> str:
     return "low"
 
 
+def _cap_band(band: str, missing_key_inputs: bool) -> str:
+    """Downgrade 'high' to 'elevated' when a dominant predictor is absent.
+
+    Lowering the flagging threshold buys recall, which is the right trade for
+    screening. It must not also manufacture confidence out of absence.
+
+    Without a glucose reading, a diabetes score is driven by age plus five
+    training medians - the model is scoring a statistical average, not this
+    patient. Reporting that as 'high' is the kind of over-flagging that gets a
+    screening tool switched off, and each false alarm costs a clinician real
+    time. The finding is still surfaced for review; it just does not claim a
+    certainty the input cannot support.
+    """
+    if missing_key_inputs and band == "high":
+        return "elevated"
+    return band
+
+
 def _predict_symptoms(patient: dict[str, Any]) -> dict[str, Any]:
     """Model A - symptom differential across 41 conditions."""
     from feature_spec import MODEL_A_SYMPTOMS, build_symptom_vector, validate_vector
@@ -144,6 +169,9 @@ def _predict_symptoms(patient: dict[str, Any]) -> dict[str, Any]:
             # probabilities of the patient having them.
             "confidence_is_ranking_only": True,
             "unmatched_symptoms": max(0, submitted - matched),
+            # Two or three symptoms cannot separate 41 conditions. Below this
+            # the ranking is weak evidence and the UI should say so.
+            "sparse_input": matched < 4,
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")
@@ -166,9 +194,12 @@ def _predict_diabetes(patient: dict[str, Any]) -> dict[str, Any]:
 
         vector = vector_from_patient_diabetes(patient, medians)
         probability = float(model.predict_proba([vector])[0][1])
-        band = _band(probability, "diabetes")
 
         labs = patient.get("labs") or {}
+        missing = [name for name in KEY_INPUTS["diabetes"] if labs.get(name) in (None, "")]
+
+        band = _cap_band(_band(probability, "diabetes"), bool(missing))
+
         return {
             "available": True,
             "source": "model",
@@ -177,8 +208,9 @@ def _predict_diabetes(patient: dict[str, Any]) -> dict[str, Any]:
             "flagged_for_review": band != "low",
             "threshold_used": RISK_THRESHOLDS["diabetes"]["elevated"],
             # Glucose is by far the strongest predictor. Without it the score
-            # rests on the training median, so the caller should say so.
-            "partial_input": labs.get("glucose") in (None, ""),
+            # rests on training medians, so the caller must say so.
+            "partial_input": bool(missing),
+            "missing_key_inputs": missing,
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")
@@ -196,7 +228,13 @@ def _predict_heart(patient: dict[str, Any]) -> dict[str, Any]:
         model = bundle.get("model") if isinstance(bundle, dict) else bundle
         vector = vector_from_patient_heart(patient)
         probability = float(model.predict_proba([vector])[0][1])
-        band = _band(probability, "cardiac")
+
+        labs = patient.get("labs") or {}
+        missing = [name for name in KEY_INPUTS["cardiac"] if labs.get(name) in (None, "")]
+
+        # The intake form never collects ca/thal/slope/oldpeak, so a cardiac
+        # score is always partly defaulted - the cap therefore always applies.
+        band = _cap_band(_band(probability, "cardiac"), True)
 
         return {
             "available": True,
@@ -210,6 +248,7 @@ def _predict_heart(patient: dict[str, Any]) -> dict[str, Any]:
             # values. The UI should surface this rather than present the score
             # as a complete cardiac assessment.
             "partial_input": True,
+            "missing_key_inputs": missing + ["ca", "thal", "slope", "oldpeak"],
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")
@@ -266,10 +305,13 @@ def run(patient: dict[str, Any]) -> dict[str, Any]:
     for key, label in (("diabetes_risk", "diabetes risk"), ("cardiac_risk", "cardiac risk")):
         section = results[key]
         if section.get("flagged_for_review"):
+            detail = f"{section['risk_band']} ({section['risk_score']})"
+            if section.get("partial_input"):
+                detail += " - based on incomplete input"
             review.append(
                 {
                     "finding": label,
-                    "detail": f"{section['risk_band']} ({section['risk_score']})",
+                    "detail": detail,
                     "urgency": "routine",
                     "source": "model",
                 }
