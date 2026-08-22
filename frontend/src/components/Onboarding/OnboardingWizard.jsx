@@ -30,10 +30,17 @@ export default function OnboardingWizard({ onComplete }) {
   const goNext = () => {
     if (currentStep === "Questionnaire") {
       const flushedSymptoms = symptomInputRef.current?.flush();
-      const nextAnswers = flushedSymptoms
+      const currentSymptoms = Array.isArray(answers.baseline_symptoms)
+        ? answers.baseline_symptoms
+        : [];
+      const symptomsChanged =
+        flushedSymptoms &&
+        (flushedSymptoms.length !== currentSymptoms.length ||
+          flushedSymptoms.some((symptom, index) => symptom !== currentSymptoms[index]));
+      const nextAnswers = symptomsChanged
         ? { ...answers, baseline_symptoms: flushedSymptoms }
         : answers;
-      if (flushedSymptoms) setAnswers(nextAnswers);
+      if (symptomsChanged) setAnswers(nextAnswers);
       const { isValid, errors: validationErrors } = validateQuestionnaire(nextAnswers);
       setErrors(validationErrors);
       if (!isValid) {
