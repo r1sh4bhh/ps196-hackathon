@@ -177,7 +177,9 @@ describe("DashboardShell symptom differential", () => {
       baselineTable.compareDocumentPosition(differential) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(differential.textContent).toContain("synthetic dataset");
-    expect(differential.textContent).toContain("lab-derived risk scores above are the stronger signal");
+    expect(differential.textContent).toContain(
+      "lab-derived risk scores above are the stronger signal"
+    );
   });
 
   it("suppresses a sparse ranking when its top score is below the threshold", () => {
