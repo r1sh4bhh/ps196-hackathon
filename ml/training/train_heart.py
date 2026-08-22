@@ -108,7 +108,7 @@ def main() -> int:
     print()
     print(classification_report(y_test, predictions, target_names=["no disease", "disease"]))
     print("  LIMITATION: 304 rows collected in 1988. The intake form does not")
-    print("  capture ca/thal/slope/oldpeak, so live predictions run on partial")
+    print("  capture every Model C feature, so live predictions run on partial")
     print("  input and are coarser than these figures suggest.")
     print()
 

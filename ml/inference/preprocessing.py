@@ -42,6 +42,7 @@ bug, not a hypothetical one.
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 from typing import Any, Iterable
@@ -69,7 +70,9 @@ __all__ = [
     "compute_imputation_medians",
     "derive_bmi",
     "vector_from_patient_diabetes",
+    "vector_and_defaulted_features_from_patient_diabetes",
     "vector_from_patient_heart",
+    "vector_and_defaulted_features_from_patient_heart",
     "HEART_VALUE_MAPS",
     "PreprocessingError",
 ]
@@ -194,6 +197,8 @@ HEART_DEFAULTS: dict[str, float] = {
     "ca": 0.0,
     "thal": 3.0,  # normal, in the 3/6/7 encoding
 }
+
+_DEFAULT_DIABETES_PEDIGREE = 0.3725
 
 
 def normalise_columns(frame: pd.DataFrame) -> pd.DataFrame:
@@ -413,15 +418,23 @@ def vector_from_patient_diabetes(
     patient: dict[str, Any],
     medians: dict[str, float] | None = None,
 ) -> list[float]:
+    """Build one ordered Model B vector from a normalised patient record."""
+    vector, _ = vector_and_defaulted_features_from_patient_diabetes(patient, medians)
+    return vector
+
+
+def vector_and_defaulted_features_from_patient_diabetes(
+    patient: dict[str, Any],
+    medians: dict[str, float] | None = None,
+) -> tuple[list[float], list[str]]:
     """Build one ordered Model B vector from a normalised patient record.
 
     BMI is derived from height and weight when not supplied directly, so a
     measured value is never discarded in favour of a median.
 
     Unknown fields fall back to the training median where one is available,
-    then to zero. The result is validated against the frozen spec before it is
-    returned, so a positional error surfaces here rather than as a confident
-    but meaningless prediction.
+    then to zero. The returned feature names identify precisely those fallback
+    positions, in the frozen model order.
     """
     medians = medians or {}
     vitals = patient.get("vitals") or {}
@@ -429,28 +442,52 @@ def vector_from_patient_diabetes(
     demographics = patient.get("demographics") or {}
 
     lookup: dict[str, Any] = {
-        "pregnancies": demographics.get("pregnancies", 0),
+        "pregnancies": demographics.get("pregnancies"),
         "glucose": labs.get("glucose"),
         "blood_pressure": vitals.get("diastolic_bp"),
         "skin_thickness": labs.get("skin_thickness"),
         "insulin": labs.get("insulin"),
         "bmi": derive_bmi(vitals),
-        "diabetes_pedigree_function": labs.get("diabetes_pedigree_function", 0.3725),
+        "diabetes_pedigree_function": labs.get("diabetes_pedigree_function"),
         "age": demographics.get("age"),
     }
 
     vector: list[float] = []
+    defaulted_features: list[str] = []
     for name in MODEL_B_FEATURES:
         value = lookup.get(name)
         if value in (None, ""):
-            value = medians.get(name, 0.0)
+            defaulted_features.append(name)
+            value = medians.get(
+                name,
+                (
+                    _DEFAULT_DIABETES_PEDIGREE
+                    if name == "diabetes_pedigree_function"
+                    else 0.0
+                ),
+            )
         try:
-            vector.append(float(value))
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value):
+                raise ValueError
+            vector.append(numeric_value)
         except (TypeError, ValueError):
-            vector.append(float(medians.get(name, 0.0)))
+            defaulted_features.append(name)
+            vector.append(
+                float(
+                    medians.get(
+                        name,
+                        (
+                            _DEFAULT_DIABETES_PEDIGREE
+                            if name == "diabetes_pedigree_function"
+                            else 0.0
+                        ),
+                    )
+                )
+            )
 
     validate_vector("model_b", vector, MODEL_B_FEATURES)
-    return vector
+    return vector, defaulted_features
 
 
 # ---------------------------------------------------------------------------
@@ -492,45 +529,57 @@ def prepare_heart_features(frame: pd.DataFrame) -> tuple[np.ndarray, pd.Series |
 
 
 def vector_from_patient_heart(patient: dict[str, Any]) -> list[float]:
+    """Build one ordered Model C vector from a normalised patient record."""
+    vector, _ = vector_and_defaulted_features_from_patient_heart(patient)
+    return vector
+
+
+def vector_and_defaulted_features_from_patient_heart(
+    patient: dict[str, Any],
+) -> tuple[list[float], list[str]]:
     """Build one ordered Model C vector from a normalised patient record.
 
-    Fields the intake form does not collect (``ca``, ``thal``, ``slope``,
-    ``oldpeak``) fall back to ``HEART_DEFAULTS``, which are expressed in the
-    same encoding the model was trained on. This is a real limitation and is
-    surfaced to the caller as ``partial_input: true``: cardiac risk from a
-    partial record is a coarser estimate than the model's headline metrics
-    imply.
+    Positions without a usable patient value fall back to ``HEART_DEFAULTS``,
+    expressed in the same encoding the model was trained on. The returned
+    feature names identify the exact fallback positions in frozen model order,
+    so callers can disclose partial input without maintaining a duplicate
+    feature list.
     """
     vitals = patient.get("vitals") or {}
     labs = patient.get("labs") or {}
     demographics = patient.get("demographics") or {}
 
-    sex = demographics.get("sex") or demographics.get("gender") or ""
-    sex_code = HEART_VALUE_MAPS["sex"].get(str(sex).strip().lower(), HEART_DEFAULTS["sex"])
-
     glucose = labs.get("glucose")
-    try:
-        fbs = 1.0 if glucose is not None and float(glucose) > 120 else 0.0
-    except (TypeError, ValueError):
-        fbs = 0.0
+    if glucose in (None, ""):
+        fbs = None
+    else:
+        try:
+            fbs = 1.0 if float(glucose) > 120 else 0.0
+        except (TypeError, ValueError):
+            fbs = None
+
+    sex = demographics.get("sex", demographics.get("gender"))
+    if isinstance(sex, str):
+        sex = HEART_VALUE_MAPS["sex"].get(sex.strip().lower())
 
     lookup: dict[str, Any] = {
         "age": demographics.get("age"),
-        "sex": sex_code,
-        "cp": labs.get("chest_pain_type"),
+        "sex": sex,
+        "cp": labs.get("cp", labs.get("chest_pain_type")),
         "trestbps": vitals.get("systolic_bp"),
         "chol": labs.get("cholesterol"),
         "fbs": fbs,
-        "restecg": labs.get("resting_ecg"),
-        "thalach": vitals.get("max_heart_rate", vitals.get("heart_rate")),
-        "exang": labs.get("exercise_angina"),
-        "oldpeak": labs.get("st_depression"),
-        "slope": labs.get("st_slope"),
-        "ca": labs.get("major_vessels"),
-        "thal": labs.get("thalassemia"),
+        "restecg": labs.get("restecg", labs.get("resting_ecg")),
+        "thalach": vitals.get("thalach", vitals.get("max_heart_rate")),
+        "exang": labs.get("exang", labs.get("exercise_angina")),
+        "oldpeak": labs.get("oldpeak", labs.get("st_depression")),
+        "slope": labs.get("slope", labs.get("st_slope")),
+        "ca": labs.get("ca", labs.get("major_vessels")),
+        "thal": labs.get("thal", labs.get("thalassemia")),
     }
 
     vector: list[float] = []
+    defaulted_features: list[str] = []
     for name in MODEL_C_FEATURES:
         value = lookup.get(name)
 
@@ -541,12 +590,17 @@ def vector_from_patient_heart(patient: dict[str, Any]) -> list[float]:
 
         if value is None or value == "":
             vector.append(HEART_DEFAULTS[name])
+            defaulted_features.append(name)
             continue
 
         try:
-            vector.append(float(value))
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value):
+                raise ValueError
+            vector.append(numeric_value)
         except (TypeError, ValueError):
             vector.append(HEART_DEFAULTS[name])
+            defaulted_features.append(name)
 
     validate_vector("model_c", vector, MODEL_C_FEATURES)
-    return vector
+    return vector, defaulted_features
