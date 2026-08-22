@@ -135,9 +135,10 @@ an unqualified accuracy claim will distrust everything else.
 - **Model B's cohort is 768 adult women of Pima Indian heritage.** It does not
   transfer cleanly to the populations this tool targets.
 - **Model C's data was collected in 1988**, and the intake form does not
-  capture `ca`, `thal`, `slope` or `oldpeak`. Live predictions run on partial
-  input and are coarser than 0.918 suggests - hence `"partial_input": true`
-  on every cardiac response.
+  capture every Model C feature. Live predictions run on partial input and
+  report the exact defaults used in `missing_key_inputs`, so they are coarser
+  than 0.918 suggests - hence `"partial_input": true` on every cardiac
+  response.
 - **Diabetes without a glucose reading** falls back to the training median,
   and glucose is the dominant predictor. That response is also flagged
   `partial_input`.

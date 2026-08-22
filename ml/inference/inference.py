@@ -179,7 +179,7 @@ def _predict_symptoms(patient: dict[str, Any]) -> dict[str, Any]:
 
 def _predict_diabetes(patient: dict[str, Any]) -> dict[str, Any]:
     """Model B - diabetes risk."""
-    from preprocessing import vector_from_patient_diabetes
+    from preprocessing import vector_and_defaulted_features_from_patient_diabetes
 
     bundle, error = _load_model("model_b_diabetes.joblib")
     if bundle is None:
@@ -192,7 +192,9 @@ def _predict_diabetes(patient: dict[str, Any]) -> dict[str, Any]:
         model = bundle.get("model") if isinstance(bundle, dict) else bundle
         medians = bundle.get("medians", {}) if isinstance(bundle, dict) else {}
 
-        vector = vector_from_patient_diabetes(patient, medians)
+        vector, defaulted_features = vector_and_defaulted_features_from_patient_diabetes(
+            patient, medians
+        )
         probability = float(model.predict_proba([vector])[0][1])
 
         labs = patient.get("labs") or {}
@@ -209,8 +211,13 @@ def _predict_diabetes(patient: dict[str, Any]) -> dict[str, Any]:
             "threshold_used": RISK_THRESHOLDS["diabetes"]["elevated"],
             # Glucose is by far the strongest predictor. Without it the score
             # rests on training medians, so the caller must say so.
+            #
+            # Other defaulted features are reported separately below. They do
+            # not change partial_input or band capping, which remain tied to
+            # the dominant glucose predictor.
             "partial_input": bool(missing),
             "missing_key_inputs": missing,
+            "defaulted_features": defaulted_features,
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")
@@ -218,7 +225,7 @@ def _predict_diabetes(patient: dict[str, Any]) -> dict[str, Any]:
 
 def _predict_heart(patient: dict[str, Any]) -> dict[str, Any]:
     """Model C - cardiac risk."""
-    from preprocessing import vector_from_patient_heart
+    from preprocessing import vector_and_defaulted_features_from_patient_heart
 
     bundle, error = _load_model("model_c_heart.joblib")
     if bundle is None:
@@ -226,14 +233,14 @@ def _predict_heart(patient: dict[str, Any]) -> dict[str, Any]:
 
     try:
         model = bundle.get("model") if isinstance(bundle, dict) else bundle
-        vector = vector_from_patient_heart(patient)
+        vector, defaulted_features = vector_and_defaulted_features_from_patient_heart(patient)
         probability = float(model.predict_proba([vector])[0][1])
 
         labs = patient.get("labs") or {}
         missing = [name for name in KEY_INPUTS["cardiac"] if labs.get(name) in (None, "")]
 
-        # The intake form never collects ca/thal/slope/oldpeak, so a cardiac
-        # score is always partly defaulted - the cap therefore always applies.
+        # The intake form cannot populate every cardiac feature, so a cardiac
+        # score is always partly defaulted and the cap therefore always applies.
         band = _cap_band(_band(probability, "cardiac"), True)
 
         return {
@@ -243,12 +250,10 @@ def _predict_heart(patient: dict[str, Any]) -> dict[str, Any]:
             "risk_band": band,
             "flagged_for_review": band != "low",
             "threshold_used": RISK_THRESHOLDS["cardiac"]["elevated"],
-            # Honesty flag: the intake form does not collect ca/thal/slope/
-            # oldpeak, so those positions carry defaults rather than measured
-            # values. The UI should surface this rather than present the score
-            # as a complete cardiac assessment.
+            # The preprocessing lookup returns the exact positions supplied by
+            # defaults, keeping this disclosure aligned with the model vector.
             "partial_input": True,
-            "missing_key_inputs": missing + ["ca", "thal", "slope", "oldpeak"],
+            "missing_key_inputs": list(dict.fromkeys(missing + defaulted_features)),
         }
     except Exception as exc:  # noqa: BLE001
         return _unavailable(f"prediction failed: {exc.__class__.__name__}: {exc}")

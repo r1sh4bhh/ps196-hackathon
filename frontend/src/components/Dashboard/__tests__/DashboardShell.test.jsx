@@ -78,7 +78,16 @@ describe("DashboardShell ml_detail caveats", () => {
         source: "model",
         risk_band: "elevated",
         partial_input: true,
-        missing_key_inputs: ["ca", "thal", "slope", "oldpeak"],
+        missing_key_inputs: [
+          "cp",
+          "restecg",
+          "thalach",
+          "exang",
+          "oldpeak",
+          "slope",
+          "ca",
+          "thal",
+        ],
       },
       hypertension: {
         available: true,
@@ -104,7 +113,9 @@ describe("DashboardShell ml_detail caveats", () => {
     const cardiac = cards.find((card) => card.textContent.includes("heart disease"));
 
     expect(cardiac.textContent).toContain("Computed without all trained features");
-    expect(cardiac.textContent).toContain("ca, thal, slope, oldpeak");
+    expect(cardiac.textContent).toContain(
+      "cp, restecg, thalach, exang, oldpeak, slope, ca, thal"
+    );
   });
 
   describe("DashboardShell risk tiers", () => {
