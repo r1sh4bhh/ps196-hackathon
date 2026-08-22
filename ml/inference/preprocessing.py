@@ -42,6 +42,7 @@ bug, not a hypothetical one.
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 from typing import Any, Iterable
@@ -460,7 +461,10 @@ def vector_and_defaulted_features_from_patient_diabetes(
                 0.3725 if name == "diabetes_pedigree_function" else 0.0,
             )
         try:
-            vector.append(float(value))
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value):
+                raise ValueError
+            vector.append(numeric_value)
         except (TypeError, ValueError):
             defaulted_features.append(name)
             vector.append(
@@ -576,7 +580,10 @@ def vector_and_defaulted_features_from_patient_heart(
             continue
 
         try:
-            vector.append(float(value))
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value):
+                raise ValueError
+            vector.append(numeric_value)
         except (TypeError, ValueError):
             vector.append(HEART_DEFAULTS[name])
             defaulted_features.append(name)

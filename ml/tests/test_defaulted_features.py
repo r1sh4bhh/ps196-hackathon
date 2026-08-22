@@ -61,13 +61,25 @@ class DefaultedFeatureTests(unittest.TestCase):
 
     def test_heart_measured_model_fields_are_not_reported_as_defaulted(self):
         patient = self.intake_patient()
-        patient["labs"]["cp"] = "typical angina"
+        patient["labs"]["cp"] = 0
         patient["vitals"]["thalach"] = 155
 
         _, defaulted = vector_and_defaulted_features_from_patient_heart(patient)
 
         self.assertNotIn("cp", defaulted)
         self.assertNotIn("thalach", defaulted)
+
+    def test_unusable_values_are_defaulted_but_measured_zero_is_not(self):
+        patient = self.intake_patient()
+        patient["demographics"]["pregnancies"] = 0
+        patient["labs"]["skin_thickness"] = float("nan")
+
+        _, defaulted = vector_and_defaulted_features_from_patient_diabetes(
+            patient, self.diabetes_medians
+        )
+
+        self.assertNotIn("pregnancies", defaulted)
+        self.assertIn("skin_thickness", defaulted)
 
     def test_cardiac_missing_key_inputs_are_the_ordered_union(self):
         patient = self.intake_patient()
