@@ -108,7 +108,7 @@ class DefaultedFeatureTests(unittest.TestCase):
             ],
         )
 
-    def test_cardiac_defaulted_feature_order_is_deterministic(self):
+    def test_cardiac_missing_key_inputs_order_is_deterministic(self):
         patient = self.intake_patient()
 
         first = self._predict_heart(patient)["missing_key_inputs"]
