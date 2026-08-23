@@ -112,6 +112,14 @@ The system is intentionally split so each layer stays replaceable and independen
 - ML logic must not be placed directly inside Express routes.
 - Mock data must follow the same structure as the real contract so teams can work independently before integration.
 
+### Vitals providers
+
+Vitals can be typed in by hand or reported by a provider (`frontend/src/vitals/`). The provider interface is vendor-neutral: an id, a label, a `simulated` flag, the metrics it can report, and a `read()` returning readings tagged with metric, value, measurement time, source (`device` / `manual`), provider id, and simulated flag. A provider reports nothing for a metric it cannot measure.
+
+Only a clearly-labelled `SimulatedVitalsProvider` exists today; it produces synthetic data for demonstration and no real device integration is implemented. Its readings are marked `simulated` at the data level, are stored per `patientId`, and keep that marking permanently, including after the provider is disconnected.
+
+Device readings are collapsed to one median value per metric per day before reaching baseline logic, so a device day counts as a single observation and must satisfy the same observation-count and 24-hour-span rules as manual entry.
+
 ## 6. Offline Architecture
 
 The final application must work fully offline.

@@ -37,7 +37,15 @@ export const BASELINE_METRICS = {
 export function computeBaseline(metric, history, currentValue) {
   const observations = Array.isArray(history)
     ? history
-        .map((entry) => ({ value: toNumber(entry?.value), timestamp: toTimestamp(entry?.timestamp) }))
+        .map((entry) => ({
+          value: toNumber(entry?.value),
+          timestamp: toTimestamp(entry?.timestamp),
+          // Device-sourced entries arrive already aggregated to one value per
+          // day (see vitals/aggregateDailyReadings.js), so they count here as
+          // exactly one observation, on the same terms as a manual reading.
+          source: entry?.source === "device" ? "device" : "manual",
+          simulated: entry?.simulated === true,
+        }))
         .filter((entry) => entry.value !== null)
     : [];
   const current = toNumber(currentValue);
@@ -99,8 +107,44 @@ export function computeBaseline(metric, history, currentValue) {
       ? new Date(sortedTimestamps[sortedTimestamps.length - 1]).toISOString()
       : null,
     clustered,
+    sources: summariseSources(observations),
     status,
   };
+}
+
+// A baseline mixing typed-in readings with aggregated device values is not
+// homogeneous evidence, so the mix is reported rather than hidden behind a
+// single number.
+function summariseSources(observations) {
+  const device = observations.filter((entry) => entry.source === "device");
+  return {
+    manual: observations.length - device.length,
+    device: device.length,
+    simulated: device.filter((entry) => entry.simulated).length,
+  };
+}
+
+// Plain-language description of the mix, empty when every observation was
+// entered by hand so the existing disclosures are not diluted with a line
+// that says nothing.
+export function describeBaselineSources(result) {
+  const sources = result?.sources;
+  if (!sources || sources.device === 0) {
+    return "";
+  }
+
+  const dayWord = sources.device === 1 ? "daily value" : "daily values";
+  const origin = sources.simulated > 0 ? "simulated device" : "device";
+  const manualPart =
+    sources.manual > 0
+      ? ` and ${sources.manual} manually entered reading${sources.manual === 1 ? "" : "s"}`
+      : "";
+  const simulatedNote =
+    sources.simulated > 0
+      ? " Simulated device data is synthetic and was not measured from a person."
+      : "";
+
+  return `Built from ${sources.device} aggregated ${origin} ${dayWord}${manualPart}.${simulatedNote}`;
 }
 
 // Concise, human-readable statement of what a baseline is (or isn't) built
@@ -140,6 +184,8 @@ export function computeAllBaselines(assessments, currentAssessment) {
           .map((assessment) => ({
             value: getMetricValue(assessment, metric),
             timestamp: assessment?.timestamp,
+            source: assessment?.source,
+            simulated: assessment?.simulated,
           }))
           .filter((entry) => entry.value !== null)
       : [];

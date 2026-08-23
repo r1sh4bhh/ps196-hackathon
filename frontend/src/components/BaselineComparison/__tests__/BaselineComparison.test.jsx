@@ -84,6 +84,52 @@ describe("BaselineComparison", () => {
     expect(dom.textContent).toContain("Baseline from 3 readings over 12 days");
   });
 
+  it("discloses when a baseline mixes manual and simulated device readings", () => {
+    const comparison = computeBaseline(
+      "systolic_bp",
+      [
+        { value: 118, timestamp: daysAgo(12) },
+        { value: 120, timestamp: daysAgo(6) },
+        {
+          value: 121,
+          timestamp: daysAgo(0),
+          source: "device",
+          simulated: true,
+        },
+      ],
+      130
+    );
+
+    const dom = render({
+      current: { systolic_bp: 130 },
+      baseline: { recordedAt: "today", risk_scores: { systolic_bp: comparison } },
+    });
+
+    expect(dom.textContent).toContain("1 aggregated simulated device daily value");
+    expect(dom.textContent).toContain("2 manually entered readings");
+    expect(dom.textContent).toContain("Simulated device data is synthetic");
+    expect(dom.querySelector(".baseline-source-simulated")).not.toBeNull();
+  });
+
+  it("does not add a source line when every reading was entered by hand", () => {
+    const comparison = computeBaseline(
+      "systolic_bp",
+      [
+        { value: 118, timestamp: daysAgo(12) },
+        { value: 120, timestamp: daysAgo(6) },
+        { value: 121, timestamp: daysAgo(0) },
+      ],
+      130
+    );
+
+    const dom = render({
+      current: { systolic_bp: 130 },
+      baseline: { recordedAt: "today", risk_scores: { systolic_bp: comparison } },
+    });
+
+    expect(dom.querySelector(".baseline-source-note")).toBeNull();
+  });
+
   it("surfaces a clustering note without suppressing the baseline", () => {
     const comparison = computeBaseline(
       "systolic_bp",
