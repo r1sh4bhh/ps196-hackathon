@@ -15,7 +15,13 @@ function topRiskLabel(latestAssessment) {
   return `${prediction.top_disease.replace(/_/g, " ")}${percent}`;
 }
 
-export default function ClinicianPatientList({ patients, onSelectPatient, onAddPatient }) {
+export default function ClinicianPatientList({
+  patients,
+  onSelectPatient,
+  onAddPatient,
+  onLoadDemoPatients,
+  onClearDemoPatients,
+}) {
   return (
     <div className="clinician-patient-list">
       <header className="clinician-patient-list-header">
@@ -23,22 +29,31 @@ export default function ClinicianPatientList({ patients, onSelectPatient, onAddP
         <button type="button" className="btn-primary" onClick={onAddPatient}>
           Add new patient
         </button>
+        <button type="button" className="btn-secondary" onClick={onLoadDemoPatients}>
+          Load demo patients
+        </button>
+        <button type="button" className="btn-secondary" onClick={onClearDemoPatients}>
+          Clear demo patients
+        </button>
       </header>
 
       {patients.length === 0 ? (
         <p className="clinician-patient-list-empty">
-          No patients saved on this device yet. Add one to get started.
+          No patients saved on this device yet. Add one to get started, or load demo patients.
         </p>
       ) : (
         <ul className="clinician-patient-list-items">
-          {patients.map(({ patientId, latestAssessment }) => (
+          {patients.map(({ patientId, latestAssessment, isDemo }) => (
             <li key={patientId} className="clinician-patient-list-item">
               <button
                 type="button"
                 className="clinician-patient-list-select"
                 onClick={() => onSelectPatient(patientId)}
               >
-                <span className="clinician-patient-list-id">{patientId}</span>
+                <span className="clinician-patient-list-id">
+                  {patientId}
+                  {isDemo ? <span className="demo-patient-badge">Demo</span> : null}
+                </span>
                 <span className="clinician-patient-list-meta">
                   Last assessment: {formatDate(latestAssessment?.timestamp)}
                 </span>

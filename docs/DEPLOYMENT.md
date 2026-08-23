@@ -85,6 +85,26 @@ the simulated-data badge.
 
 ---
 
+## Demo mode
+
+In the clinician view, select **Load demo patients** to add three clearly
+marked demo records to that browser's local storage. Each has five dated,
+fictional patient-entered visits, so its personal baseline is already
+established. Use **Clear demo patients** to remove only these demo profiles
+and assessments; records created by a user are left intact.
+
+The demo histories contain no seeded risk scores, evidence, or confidence.
+Selecting a demo patient runs the live `/predict` service for its visit
+history, so the risk dashboard is populated with current model or rule output.
+If the service falls back to simulated data, the dashboard's visible
+simulated-data warning remains in place.
+
+Warm the Render instance by loading a demo dashboard a few minutes before
+presenting. A sleeping free-tier instance can take 30–60 seconds to start,
+and the UI will show that the model is running while it waits.
+
+---
+
 ## 4. This deployment is online-only
 
 Inference runs server-side, in the container. The hosted app therefore

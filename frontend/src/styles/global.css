@@ -134,6 +134,24 @@ select.form-control:has(option:checked[value=""]) {
   flex-wrap: wrap;
 }
 
+.demo-model-loading {
+  max-width: 640px;
+  margin: var(--space-6) auto;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.demo-model-loading p {
+  color: var(--color-muted);
+}
+
+.demo-model-loading .btn-secondary {
+  margin-left: var(--space-3);
+}
+
 .app-theme-toggle {
   max-width: 900px;
   margin: 0 auto;
