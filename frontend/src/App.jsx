@@ -190,12 +190,18 @@ export default function App() {
     setDemoVersion((version) => version + 1);
   };
 
-  const profileUtilityActions = (
+  // Split by hierarchy, not by convenience: editing the profile is a real user
+  // action, while loading and clearing demo patients are dev utilities that
+  // should not sit at the same visual weight beside them.
+  const editProfileAction = (
+    <button type="button" className="btn-secondary" onClick={handleRedoOnboarding}>
+      Edit profile / redo onboarding
+    </button>
+  );
+
+  const demoDataActions = (
     <>
-      <button type="button" className="btn-secondary" onClick={handleRedoOnboarding}>
-        Edit profile / redo onboarding
-      </button>
-      <button type="button" className="btn-secondary" onClick={handleLoadDemoHistory}>
+      <button type="button" className="btn-ghost" onClick={handleLoadDemoHistory}>
         Load demo patients
       </button>
       <ConfirmButton
@@ -203,6 +209,7 @@ export default function App() {
         confirmLabel="Yes, clear demo patients"
         message={CLEAR_DEMO_CONFIRMATION}
         onConfirm={handleClearDemoHistory}
+        className="btn-ghost"
       />
     </>
   );
@@ -328,9 +335,11 @@ export default function App() {
                 onAddPerson={handleAddPerson}
                 addButtonClassName="btn-primary"
               />
-              <div className="profile-actions patient-action-utilities">
-                {profileUtilityActions}
-              </div>
+              <div className="profile-actions patient-action-utilities">{editProfileAction}</div>
+              <details className="patient-demo-controls">
+                <summary>Demo controls</summary>
+                <div className="patient-demo-controls-actions">{demoDataActions}</div>
+              </details>
             </section>
           )}
           {role === ROLES.CLINICIAN && (
@@ -341,7 +350,8 @@ export default function App() {
               <button type="button" className="btn-secondary" onClick={handleBackToPatientList}>
                 Back to patient list
               </button>
-              {profileUtilityActions}
+              {editProfileAction}
+              {demoDataActions}
             </div>
           )}
           {profile?.patientId ? (

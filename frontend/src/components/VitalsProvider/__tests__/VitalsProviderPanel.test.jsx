@@ -80,6 +80,22 @@ describe("VitalsProviderPanel", () => {
     expect(container.querySelector(".vitals-provider-details")).toBeNull();
   });
 
+  it("keeps the collapsed panel to a single compact row above the form", async () => {
+    render("P001");
+
+    const panel = container.querySelector(".vitals-provider-panel");
+    // Collapsed, the panel is only the summary row: nothing else is rendered
+    // that could stretch it into a full-width block above the form.
+    expect(panel.children).toHaveLength(1);
+    expect(panel.firstElementChild.classList.contains("vitals-provider-summary")).toBe(true);
+
+    await expand();
+
+    // Expanding adds the card that carries the provider list and actions.
+    expect(panel.children).toHaveLength(2);
+    expect(container.querySelector(".vitals-provider-details")).toBeTruthy();
+  });
+
   it("keeps the simulated disclosure and the reading count on the collapsed row", async () => {
     render("P001");
     await expand();
