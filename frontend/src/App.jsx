@@ -200,12 +200,12 @@ export default function App() {
       const predictions = await Promise.all(
         history.map((assessment) => submitPatientData(assessment.patientData))
       );
-      history.forEach((assessment, index) =>
-        saveAssessment({ ...assessment, prediction: predictions[index] })
-      );
       if (requestId !== demoRequestId.current) {
         return;
       }
+      history.forEach((assessment, index) =>
+        saveAssessment({ ...assessment, prediction: predictions[index] })
+      );
 
       const fullHistory = listAssessments(patientId);
       const currentAssessment = fullHistory[fullHistory.length - 1];

@@ -29,6 +29,7 @@ let root;
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   localStorage.clear();
+  submitPatientData.mockClear();
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
