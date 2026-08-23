@@ -10,6 +10,8 @@ import { listAssessments, saveAssessment } from "../../storage/assessmentHistory
 import { buildRiskTrajectory } from "../../utils/trajectory";
 import { getStoredLabStatus } from "../../utils/labFreshness";
 import { saveLabResults } from "../../storage/userProfileStore";
+import { listReadings } from "../../storage/vitalsReadingStore";
+import { buildBaselineHistory } from "../../vitals/aggregateDailyReadings";
 import "./patientForm.css";
 
 const initialState = {
@@ -115,7 +117,12 @@ export default function PatientForm({
       const prediction = await submitPatientData(normalized);
       saveLabResults(normalized.patientId, normalized.labs, { reusedLabs });
       const history = listAssessments(normalized.patientId);
-      const baselines = computeAllBaselines(history, normalized);
+      // Device readings join the baseline only after being collapsed to one
+      // value per metric per day, so a device cannot satisfy PR #21's
+      // observation-count and 24-hour-span rules on easier terms than manual
+      // entry does.
+      const baselineHistory = buildBaselineHistory(history, listReadings(normalized.patientId));
+      const baselines = computeAllBaselines(baselineHistory, normalized);
       saveAssessment({
         patientId: normalized.patientId,
         patientData: normalized,
@@ -130,7 +137,7 @@ export default function PatientForm({
         normalized,
         prediction,
         baselines,
-        history[0]?.timestamp,
+        baselineHistory[0]?.timestamp,
         trajectory,
         reusedLabs
       );

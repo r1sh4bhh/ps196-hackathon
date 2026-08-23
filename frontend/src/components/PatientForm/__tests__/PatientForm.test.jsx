@@ -14,6 +14,8 @@ vi.mock("../../../api/predictService", () => ({
 }));
 
 import { submitPatientData } from "../../../api/predictService";
+import { listReadings, saveReadings } from "../../../storage/vitalsReadingStore";
+import { createReading } from "../../../vitals/vitalsProvider";
 
 let container;
 let root;
@@ -201,5 +203,85 @@ describe("PatientForm return-visit short flow", () => {
       "hdl",
     ]);
     expect(submitted.labs.cholesterol).toBe(195);
+  });
+});
+
+describe("PatientForm with recorded device readings", () => {
+  function seedDeviceDays(patientId, days) {
+    saveReadings(
+      patientId,
+      days.flatMap((day, dayIndex) =>
+        Array.from({ length: 6 }, (_, index) =>
+          createReading({
+            metric: "systolic_bp",
+            value: 118 + dayIndex + (index % 3),
+            measuredAt: `${day}T0${index}:00:00.000Z`,
+            source: "device",
+            providerId: "simulated",
+            simulated: true,
+          })
+        )
+      )
+    );
+  }
+
+  it("counts each aggregated device day as one observation and keeps its provenance", async () => {
+    seedDeviceDays("P001", ["2026-08-19", "2026-08-20", "2026-08-21"]);
+    const onPredictionReceived = vi.fn();
+    render({ initialData: stableInitialData, mode: "short", onPredictionReceived });
+
+    fillRequiredVitalsAndLabs();
+    await act(async () => {
+      container
+        .querySelector("form")
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const baselines = onPredictionReceived.mock.calls[0][2];
+    expect(baselines.systolic_bp.observations).toBe(3);
+    expect(baselines.systolic_bp.sources).toEqual({ manual: 0, device: 3, simulated: 3 });
+    expect(baselines.systolic_bp.status).toBe("established");
+    // Device readings inform the baseline only; the prediction payload is
+    // exactly what was entered on the form.
+    expect(submitPatientData.mock.calls[0][0].vitals.systolic_bp).toBe(120);
+  });
+
+  it("does not establish a baseline from a single day of device readings", async () => {
+    seedDeviceDays("P001", ["2026-08-21"]);
+    const onPredictionReceived = vi.fn();
+    render({ initialData: stableInitialData, mode: "short", onPredictionReceived });
+
+    fillRequiredVitalsAndLabs();
+    await act(async () => {
+      container
+        .querySelector("form")
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const baselines = onPredictionReceived.mock.calls[0][2];
+    expect(listReadings("P001")).toHaveLength(6);
+    expect(baselines.systolic_bp.observations).toBe(1);
+    expect(baselines.systolic_bp.status).toBe("establishing");
+    expect(baselines.systolic_bp.baseline).toBeNull();
+  });
+
+  it("never mixes another person's device readings into a baseline", async () => {
+    seedDeviceDays("P002", ["2026-08-19", "2026-08-20", "2026-08-21"]);
+    const onPredictionReceived = vi.fn();
+    render({ initialData: stableInitialData, mode: "short", onPredictionReceived });
+
+    fillRequiredVitalsAndLabs();
+    await act(async () => {
+      container
+        .querySelector("form")
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const baselines = onPredictionReceived.mock.calls[0][2];
+    expect(baselines.systolic_bp.observations).toBe(0);
+    expect(baselines.systolic_bp.status).toBe("unavailable");
   });
 });

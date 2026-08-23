@@ -1,5 +1,9 @@
 import React from "react";
-import { BASELINE_METRICS, describeBaselineProvenance } from "../../utils/baseline";
+import {
+  BASELINE_METRICS,
+  describeBaselineProvenance,
+  describeBaselineSources,
+} from "../../utils/baseline";
 import { formatMeasurement as formatValueWithUnit } from "../../utils/format";
 import "./baselineComparison.css";
 
@@ -58,6 +62,15 @@ export default function BaselineComparison({ current, baseline }) {
                   {isPersonalBaseline ? (
                     <div className="baseline-provenance">
                       {describeBaselineProvenance(comparison)}
+                    </div>
+                  ) : null}
+                  {isPersonalBaseline && describeBaselineSources(comparison) ? (
+                    <div
+                      className={`baseline-source-note${
+                        comparison.sources.simulated > 0 ? " baseline-source-simulated" : ""
+                      }`}
+                    >
+                      {describeBaselineSources(comparison)}
                     </div>
                   ) : null}
                   {comparison?.clustered ? (

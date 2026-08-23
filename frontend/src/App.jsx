@@ -23,6 +23,7 @@ import {
   latestAssessment,
 } from "./storage/assessmentHistory";
 import ThemeToggle from "./components/ThemeToggle";
+import VitalsProviderPanel from "./components/VitalsProvider/VitalsProviderPanel";
 
 function hasReturnVisitHistory(patientId) {
   return Boolean(patientId) && listAssessments(patientId).length > 0;
@@ -188,6 +189,15 @@ export default function App() {
               Clear demo patient history
             </button>
           </div>
+          {profile?.patientId ? (
+            // Keyed by patientId for the same reason the form is: device
+            // readings are strictly per-person and must never carry over when
+            // the active person changes.
+            <VitalsProviderPanel
+              key={`vitals-${profile.patientId}`}
+              patientId={profile.patientId}
+            />
+          ) : null}
           <PatientForm
             key={profile?.patientId || "no-profile"}
             onPredictionReceived={handlePredictionReceived}
