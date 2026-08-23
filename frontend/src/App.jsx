@@ -7,6 +7,7 @@ import PersonSwitcher from "./components/PersonSwitcher/PersonSwitcher";
 import ClinicianPatientList from "./components/ClinicianPatientList/ClinicianPatientList";
 import RoleSwitcher from "./components/RoleSwitcher";
 import ConfirmButton from "./components/ConfirmButton/ConfirmButton";
+import { CLEAR_DEMO_CONFIRMATION } from "./constants/copy";
 import {
   loadProfile,
   clearProfile,
@@ -324,7 +325,7 @@ export default function App() {
             <ConfirmButton
               label="Clear demo patients"
               confirmLabel="Yes, clear demo patients"
-              message="Demo patients and their visit history will be removed from this device. Real patient records are not affected."
+              message={CLEAR_DEMO_CONFIRMATION}
               onConfirm={handleClearDemoHistory}
             />
           </div>

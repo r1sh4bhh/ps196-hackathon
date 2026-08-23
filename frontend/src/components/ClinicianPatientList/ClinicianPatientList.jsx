@@ -1,9 +1,7 @@
 import React from "react";
 import ConfirmButton from "../ConfirmButton/ConfirmButton";
+import { CLEAR_DEMO_CONFIRMATION } from "../../constants/copy";
 import "./clinicianPatientList.css";
-
-const CLEAR_DEMO_CONFIRMATION =
-  "Demo patients and their visit history will be removed from this device. Real patient records are not affected.";
 
 function formatDate(timestamp) {
   return timestamp ? String(timestamp).slice(0, 10) : "No visits yet";
