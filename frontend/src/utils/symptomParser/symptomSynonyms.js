@@ -49,7 +49,7 @@ export const SYMPTOM_SYNONYMS = Object.freeze([
   },
   { phrases: ["throwing up", "being sick", "vomiting", "puking"], candidates: ["vomiting"] },
   {
-    phrases: ["nauseous", "nauseated", "queasy", "sick to my stomach", "sick to the stomach", "sick"],
+    phrases: ["nauseous", "nauseated", "queasy", "sick to my stomach", "sick to the stomach"],
     candidates: ["nausea"],
   },
   {

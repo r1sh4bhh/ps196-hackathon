@@ -188,8 +188,17 @@ export const ruleBasedParser = Object.freeze({
 
 function normalize(text) {
   return rewriteInvertedPhrasing(
-    normalizeInflections(normalizeFrequencyModifiers(stripFillers(singularizeSensationWords(text))))
+    normalizeInflections(
+      normalizeFrequencyModifiers(stripFillers(normalizeFeelingSick(singularizeSensationWords(text))))
+    )
   );
+}
+
+// "feeling sick" means nausea, so it is rewritten before "feeling" is stripped
+// as a filler. Bare "sick" is deliberately not a nausea synonym: on its own it
+// commonly means vomiting, which is a separate symptom.
+function normalizeFeelingSick(text) {
+  return text.replace(/\bfeel(?:s|ing)?\s+sick\b/g, "nauseous");
 }
 
 // "peeing more often" / "peeing constantly" -> "peeing a lot" so one synonym

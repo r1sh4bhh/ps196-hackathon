@@ -311,6 +311,7 @@ describe("ruleBasedParser", () => {
 
     it("recognises nausea phrasings", () => {
       expect(matchedSymptoms("feeling sick")).toEqual(["nausea"]);
+      expect(matchedSymptoms("I feel sick")).toEqual(["nausea"]);
       expect(matchedSymptoms("nauseous")).toEqual(["nausea"]);
       expect(matchedSymptoms("queasy")).toEqual(["nausea"]);
       expect(matchedSymptoms("sick to my stomach")).toEqual(["nausea"]);
