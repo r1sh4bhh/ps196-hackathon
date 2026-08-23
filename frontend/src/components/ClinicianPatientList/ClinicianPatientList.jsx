@@ -1,4 +1,6 @@
 import React from "react";
+import ConfirmButton from "../ConfirmButton/ConfirmButton";
+import { CLEAR_DEMO_CONFIRMATION } from "../../constants/copy";
 import "./clinicianPatientList.css";
 
 function formatDate(timestamp) {
@@ -30,18 +32,32 @@ export default function ClinicianPatientList({
         <button type="button" className="btn-primary" onClick={onAddPatient}>
           Add new patient
         </button>
-        <button type="button" className="btn-secondary" onClick={onLoadDemoPatients}>
-          Load demo patients
-        </button>
-        <button type="button" className="btn-secondary" onClick={onClearDemoPatients}>
-          Clear demo patients
-        </button>
       </header>
 
+      <div className="clinician-demo-controls">
+        <span className="clinician-demo-controls-label">Demo data</span>
+        <button type="button" className="btn-ghost" onClick={onLoadDemoPatients}>
+          Load demo patients
+        </button>
+        <ConfirmButton
+          className="btn-ghost"
+          label="Clear demo patients"
+          confirmLabel="Yes, clear demo patients"
+          message={CLEAR_DEMO_CONFIRMATION}
+          onConfirm={onClearDemoPatients}
+        />
+      </div>
+
       {patients.length === 0 ? (
-        <p className="clinician-patient-list-empty">
-          No patients saved on this device yet. Add one to get started, or load demo patients.
-        </p>
+        <div className="clinician-patient-list-empty">
+          <p>
+            No patients saved on this device yet. Every patient you add is stored on this device
+            only, with their visit history.
+          </p>
+          <button type="button" className="btn-secondary" onClick={onLoadDemoPatients}>
+            Load demo patients
+          </button>
+        </div>
       ) : (
         <ul className="clinician-patient-list-items">
           {patients.map(({ patientId, latestAssessment, isDemo }) => (

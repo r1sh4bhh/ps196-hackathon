@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMeasurement, formatNumber } from "../format";
+import { formatMeasurement, formatNumber, formatOptionLabel } from "../format";
 
 describe("formatNumber", () => {
   it("rounds a raw float to one decimal place", () => {
@@ -32,5 +32,23 @@ describe("formatMeasurement", () => {
 
   it("omits a missing unit", () => {
     expect(formatMeasurement(1.25, undefined)).toBe("1.3");
+  });
+});
+
+describe("formatOptionLabel", () => {
+  it("renders a raw option value in sentence case", () => {
+    expect(formatOptionLabel("moderately_active")).toBe("Moderately active");
+    expect(formatOptionLabel("never")).toBe("Never");
+  });
+
+  it("uses sentence case rather than title case", () => {
+    expect(formatOptionLabel("kidney_disease")).toBe("Kidney disease");
+    expect(formatOptionLabel("KIDNEY_DISEASE")).toBe("Kidney disease");
+  });
+
+  it("returns an empty string for missing values", () => {
+    expect(formatOptionLabel(undefined)).toBe("");
+    expect(formatOptionLabel(null)).toBe("");
+    expect(formatOptionLabel("  ")).toBe("");
   });
 });

@@ -6,6 +6,8 @@ import RoleSelect from "./components/RoleSelect/RoleSelect";
 import PersonSwitcher from "./components/PersonSwitcher/PersonSwitcher";
 import ClinicianPatientList from "./components/ClinicianPatientList/ClinicianPatientList";
 import RoleSwitcher from "./components/RoleSwitcher";
+import ConfirmButton from "./components/ConfirmButton/ConfirmButton";
+import { CLEAR_DEMO_CONFIRMATION } from "./constants/copy";
 import {
   loadProfile,
   clearProfile,
@@ -320,9 +322,12 @@ export default function App() {
             <button type="button" className="btn-secondary" onClick={handleLoadDemoHistory}>
               Load demo patients
             </button>
-            <button type="button" className="btn-secondary" onClick={handleClearDemoHistory}>
-              Clear demo patients
-            </button>
+            <ConfirmButton
+              label="Clear demo patients"
+              confirmLabel="Yes, clear demo patients"
+              message={CLEAR_DEMO_CONFIRMATION}
+              onConfirm={handleClearDemoHistory}
+            />
           </div>
           {profile?.patientId ? (
             // Keyed by patientId for the same reason the form is: device
