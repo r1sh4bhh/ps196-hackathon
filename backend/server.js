@@ -38,12 +38,16 @@ function isApiPath(pathname) {
 // Running the backend locally without building the frontend is a supported
 // workflow, so a missing dist directory must not stop the API from serving.
 if (fs.existsSync(indexHtmlPath)) {
+  // Read once at startup rather than from disk per request: the shell is a
+  // fixed artefact for the lifetime of the container, so this avoids a file
+  // system access on every unmatched route.
+  const indexHtml = fs.readFileSync(indexHtmlPath, "utf8");
   app.use(express.static(distPath));
   app.get("*", (req, res, next) => {
     if (isApiPath(req.path)) {
       return next();
     }
-    res.sendFile(indexHtmlPath);
+    res.type("html").send(indexHtml);
   });
 } else {
   console.warn(
