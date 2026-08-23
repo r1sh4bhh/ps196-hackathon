@@ -83,4 +83,29 @@ describe("assessmentHistory", () => {
       { value: 130, timestamp: "2026-03-01T00:00:00.000Z" },
     ]);
   });
+
+  it("preserves provenance needed to interpret historical values and predictions", () => {
+    const record = assessment("a1", "P001", "2026-01-01T00:00:00.000Z");
+    record.reusedLabs = {
+      glucose: { value: 100, recordedAt: "2025-12-01T00:00:00.000Z", isStale: true },
+    };
+    record.source = "device";
+    record.simulated = true;
+    record.prediction.source = "model";
+    record.prediction.ml_detail = {
+      diabetes_risk: {
+        partial_input: true,
+        defaulted_features: ["insulin"],
+        missing_key_inputs: ["insulin"],
+      },
+    };
+
+    saveAssessment(record);
+    const saved = listAssessments("P001")[0];
+
+    expect(saved.reusedLabs.glucose.isStale).toBe(true);
+    expect(saved.source).toBe("device");
+    expect(saved.simulated).toBe(true);
+    expect(saved.prediction.ml_detail.diabetes_risk.defaulted_features).toEqual(["insulin"]);
+  });
 });

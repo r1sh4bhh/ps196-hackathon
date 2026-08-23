@@ -21,6 +21,7 @@ export default function ClinicianPatientList({
   onAddPatient,
   onLoadDemoPatients,
   onClearDemoPatients,
+  onViewHistory,
 }) {
   return (
     <div className="clinician-patient-list">
@@ -45,22 +46,31 @@ export default function ClinicianPatientList({
         <ul className="clinician-patient-list-items">
           {patients.map(({ patientId, latestAssessment, isDemo }) => (
             <li key={patientId} className="clinician-patient-list-item">
-              <button
-                type="button"
-                className="clinician-patient-list-select"
-                onClick={() => onSelectPatient(patientId)}
-              >
-                <span className="clinician-patient-list-id">
-                  {patientId}
-                  {isDemo ? <span className="demo-patient-badge">Demo</span> : null}
-                </span>
-                <span className="clinician-patient-list-meta">
-                  Last assessment: {formatDate(latestAssessment?.timestamp)}
-                </span>
-                <span className="clinician-patient-list-meta">
-                  Top risk: {topRiskLabel(latestAssessment)}
-                </span>
-              </button>
+              <div className="clinician-patient-list-summary">
+                <button
+                  type="button"
+                  className="clinician-patient-list-select"
+                  onClick={() => onSelectPatient(patientId)}
+                >
+                  <span className="clinician-patient-list-id">
+                    {patientId}
+                    {isDemo ? <span className="demo-patient-badge">Demo</span> : null}
+                  </span>
+                  <span className="clinician-patient-list-meta">
+                    Last assessment: {formatDate(latestAssessment?.timestamp)}
+                  </span>
+                  <span className="clinician-patient-list-meta">
+                    Top risk: {topRiskLabel(latestAssessment)}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary clinician-patient-history"
+                  onClick={() => onViewHistory(patientId)}
+                >
+                  View history
+                </button>
+              </div>
             </li>
           ))}
         </ul>

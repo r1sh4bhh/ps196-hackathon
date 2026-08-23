@@ -40,6 +40,7 @@ export default function DashboardShell({
   trajectory,
   reusedLabs = {},
   onBackToForm,
+  onViewHistory,
 }) {
   if (!prediction) {
     return (
@@ -99,9 +100,14 @@ export default function DashboardShell({
             ) : null}
           </p>
         </div>
-        <button className="btn-secondary" onClick={onBackToForm}>
-          New Entry
-        </button>
+        <div className="dashboard-header-actions">
+          <button className="btn-secondary" onClick={onViewHistory}>
+            Full visit history
+          </button>
+          <button className="btn-secondary" onClick={onBackToForm}>
+            New Entry
+          </button>
+        </div>
       </header>
 
       {degraded ? (
