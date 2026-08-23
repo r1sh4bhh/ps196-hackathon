@@ -285,6 +285,77 @@ describe("ruleBasedParser", () => {
     });
   });
 
+  describe("frequency modifiers and expanded synonyms", () => {
+    const matchedSymptoms = (text) =>
+      ruleBasedParser.parse(text).matched.map(({ symptom }) => symptom);
+
+    it("treats equivalent frequency modifiers as the same phrasing", () => {
+      expect(matchedSymptoms("peeing more often")).toEqual(["polyuria"]);
+      expect(matchedSymptoms("peeing constantly")).toEqual(["polyuria"]);
+      expect(matchedSymptoms("urinating frequently")).toEqual(["polyuria"]);
+      expect(matchedSymptoms("going to the toilet a lot")).toEqual(["polyuria"]);
+      expect(matchedSymptoms("passing urine frequently")).toEqual(["polyuria"]);
+      expect(matchedSymptoms("need to pee all the time")).toEqual(["polyuria"]);
+    });
+
+    it("does not treat a bare base activity as a symptom", () => {
+      const peeing = ruleBasedParser.parse("peeing");
+      expect(peeing.matched).toEqual([]);
+      expect(peeing.negated).toEqual([]);
+      expect(peeing.unmatched).toEqual(["peeing"]);
+
+      const urinating = ruleBasedParser.parse("urinating");
+      expect(urinating.matched).toEqual([]);
+      expect(urinating.unmatched).toEqual(["urinating"]);
+    });
+
+    it("recognises nausea phrasings", () => {
+      expect(matchedSymptoms("feeling sick")).toEqual(["nausea"]);
+      expect(matchedSymptoms("I feel sick")).toEqual(["nausea"]);
+      expect(matchedSymptoms("nauseous")).toEqual(["nausea"]);
+      expect(matchedSymptoms("queasy")).toEqual(["nausea"]);
+      expect(matchedSymptoms("sick to my stomach")).toEqual(["nausea"]);
+    });
+
+    it("recognises further fatigue, breathlessness and vision phrasings", () => {
+      expect(matchedSymptoms("exhausted")).toEqual(["fatigue"]);
+      expect(matchedSymptoms("wiped out")).toEqual(["fatigue"]);
+      expect(matchedSymptoms("out of breath")).toEqual(["breathlessness"]);
+      expect(matchedSymptoms("struggling to breathe")).toEqual(["breathlessness"]);
+      expect(matchedSymptoms("vision is blurry")).toEqual(["blurred_and_distorted_vision"]);
+      expect(matchedSymptoms("cannot see clearly")).toEqual(["blurred_and_distorted_vision"]);
+    });
+
+    it("folds simple inflections of action words", () => {
+      expect(matchedSymptoms("vomited")).toEqual(["vomiting"]);
+      expect(matchedSymptoms("vomits")).toEqual(["vomiting"]);
+      expect(matchedSymptoms("being sick")).toEqual(["vomiting"]);
+    });
+
+    it("still negates the newly-matching phrasings", () => {
+      const noPolyuria = ruleBasedParser.parse("not peeing more often");
+      expect(noPolyuria.matched).toEqual([]);
+      expect(noPolyuria.negated.map(({ symptom }) => symptom)).toEqual(["polyuria"]);
+
+      const noNausea = ruleBasedParser.parse("no nausea");
+      expect(noNausea.matched).toEqual([]);
+      expect(noNausea.negated.map(({ symptom }) => symptom)).toEqual(["nausea"]);
+    });
+
+    it("leaves unsupported thirst language unchanged", () => {
+      const result = ruleBasedParser.parse("always thirsty");
+      expect(result.matched).toEqual([]);
+      expect(result.unmatched).toEqual(["always thirsty"]);
+    });
+
+    it("still routes ambiguous entries through the ambiguous channel", () => {
+      expect(ruleBasedParser.parse("fever").ambiguous).toEqual([
+        { matchedText: "fever", candidates: ["high_fever", "mild_fever"] },
+      ]);
+      expect(ruleBasedParser.parse("swelling").matched).toEqual([]);
+    });
+  });
+
   describe("verification scenarios", () => {
     it("recognizes polyuria and chest pain together", () => {
       const result = ruleBasedParser.parse(
