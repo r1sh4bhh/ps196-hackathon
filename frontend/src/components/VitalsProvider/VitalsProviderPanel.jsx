@@ -27,6 +27,8 @@ export default function VitalsProviderPanel({ patientId }) {
   const [renderedPatientId, setRenderedPatientId] = useState(patientId);
   const providers = listProviders();
 
+  // React's documented "adjust state when a prop changes" pattern: the state
+  // is corrected during render and React re-renders immediately with it.
   // Belt and braces alongside the `key={patientId}` remount in App: if this
   // panel is ever reused across a person switch, its state is rebuilt from
   // the new person's storage so one person's device readings can never be

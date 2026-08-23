@@ -15,7 +15,9 @@ import { READING_SOURCES, createReading } from "./vitalsProvider";
 const MS_PER_MINUTE = 60 * 1000;
 const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 const DEFAULT_INTERVAL_MS = 30 * MS_PER_MINUTE;
-const MAX_READINGS_PER_CALL = 500;
+// Bounds one call: at most this many sample times, each producing at most one
+// reading per supported metric.
+const MAX_SAMPLE_TIMES_PER_CALL = 500;
 
 // Per-metric plausible resting centre, diurnal swing, and slow multi-day
 // drift. Ranges are ordinary adult values; nothing here is clinically derived.
@@ -51,11 +53,13 @@ export class SimulatedVitalsProvider {
     }
 
     const readings = [];
+    let sampleTimes = 0;
     for (
       let timestamp = start;
-      timestamp <= end && readings.length < MAX_READINGS_PER_CALL * this.supportedMetrics.length;
+      timestamp <= end && sampleTimes < MAX_SAMPLE_TIMES_PER_CALL;
       timestamp += step
     ) {
+      sampleTimes += 1;
       for (const metric of this.supportedMetrics) {
         const reading = createReading({
           metric,

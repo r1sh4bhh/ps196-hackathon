@@ -33,6 +33,11 @@ export function aggregateDailyReadings(
 
   const buckets = new Map();
   for (const reading of deviceReadings) {
+    // Days are UTC calendar days, taken from the ISO timestamp. This is a
+    // known simplification: a reading just either side of local midnight can
+    // land in the neighbouring UTC day. It never inflates the observation
+    // count beyond one per metric per UTC day, so it cannot weaken the
+    // baseline rules; at worst it splits one local day across two.
     const day = reading.measuredAt.slice(0, 10);
     const key = `${day}|${reading.metric}`;
     const bucket = buckets.get(key) || { day, metric: reading.metric, readings: [] };
@@ -74,6 +79,8 @@ export function dailyAggregatesToObservations(aggregates) {
         existing.providerIds.push(providerId);
       }
     }
+    // Both sides are ISO-8601 UTC strings produced by createReading, so a
+    // lexicographic comparison is a chronological one. Keep it that way.
     if (aggregate.lastReadingAt > existing.timestamp) {
       existing.timestamp = aggregate.lastReadingAt;
     }
