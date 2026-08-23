@@ -170,6 +170,53 @@ describe("App returning-patient recognition", () => {
   });
 });
 
+describe("App form-view actions by role", () => {
+  // The profile/demo utilities were extracted into a shared fragment and moved
+  // into role-conditional blocks. Both roles must still see all three, exactly
+  // once each, so the extraction cannot quietly drop or duplicate one.
+  const PROFILE_UTILITIES = [
+    "Edit profile / redo onboarding",
+    "Load demo patients",
+    "Clear demo patients",
+  ];
+
+  function buttonLabels() {
+    return [...container.querySelectorAll("button")].map((button) => button.textContent);
+  }
+
+  function countLabel(label) {
+    return buttonLabels().filter((text) => text.includes(label)).length;
+  }
+
+  it("shows a patient the profile utilities and the person switcher, once each", () => {
+    seedProfile("P001", 45, 170);
+    localStorage.setItem("ps196_role", ROLES.PATIENT);
+
+    render();
+
+    PROFILE_UTILITIES.forEach((label) => expect(countLabel(label)).toBe(1));
+    expect(countLabel("Add a family member")).toBe(1);
+    expect(countLabel("Back to patient list")).toBe(0);
+  });
+
+  it("shows a clinician the same profile utilities plus one way back, once each", () => {
+    seedProfile("P001", 45, 170);
+    localStorage.setItem("ps196_role", ROLES.CLINICIAN);
+
+    render();
+    const p001Row = [...container.querySelectorAll(".clinician-patient-list-select")].find((row) =>
+      row.textContent.includes("P001")
+    );
+    act(() => p001Row.click());
+
+    PROFILE_UTILITIES.forEach((label) => expect(countLabel(label)).toBe(1));
+    expect(countLabel("Back to patient list")).toBe(1);
+    // The clinician actions belong in one row, not two stacked ones.
+    expect(container.querySelectorAll(".profile-actions").length).toBe(1);
+    expect(container.querySelector(".patient-actions")).toBeNull();
+  });
+});
+
 describe("App multi-person switching", () => {
   it("switches between saved people without leaking one person's data into another", () => {
     seedProfile("P001", 45, 170);
