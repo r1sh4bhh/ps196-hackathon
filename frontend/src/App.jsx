@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import PatientForm from "./components/PatientForm/PatientForm";
 import DashboardShell from "./components/Dashboard/DashboardShell";
 import OnboardingWizard from "./components/Onboarding/OnboardingWizard";
@@ -57,6 +57,8 @@ export default function App() {
   const [view, setView] = useState(() => computeInitialView(getRole(), loadProfile()));
   const [demoVersion, setDemoVersion] = useState(0);
   const [demoLoadError, setDemoLoadError] = useState(null);
+  const [demoLoadingPatientId, setDemoLoadingPatientId] = useState(null);
+  const demoRequestId = useRef(0);
 
   const handleRoleSelected = (nextRole) => {
     setRole(nextRole);
@@ -114,6 +116,7 @@ export default function App() {
   };
 
   const handleBackToPatientList = () => {
+    demoRequestId.current += 1;
     setView("clinician-list");
   };
 
@@ -179,6 +182,9 @@ export default function App() {
   };
 
   const loadDemoDashboard = async (patientId) => {
+    const requestId = demoRequestId.current + 1;
+    demoRequestId.current = requestId;
+    setDemoLoadingPatientId(patientId);
     const history = listAssessments(patientId);
     if (!history.length) {
       setDemoLoadError("This demo patient has no visit history. Reload the demo patients and try again.");
@@ -197,6 +203,9 @@ export default function App() {
       history.forEach((assessment, index) =>
         saveAssessment({ ...assessment, prediction: predictions[index] })
       );
+      if (requestId !== demoRequestId.current) {
+        return;
+      }
 
       const fullHistory = listAssessments(patientId);
       const currentAssessment = fullHistory[fullHistory.length - 1];
@@ -216,6 +225,9 @@ export default function App() {
         {}
       );
     } catch (error) {
+      if (requestId !== demoRequestId.current) {
+        return;
+      }
       setDemoLoadError(error.message || "The model could not be reached. Please try again.");
     }
   };
@@ -248,7 +260,7 @@ export default function App() {
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => loadDemoDashboard(profile?.patientId)}
+                onClick={() => loadDemoDashboard(demoLoadingPatientId)}
               >
                 Retry model prediction
               </button>

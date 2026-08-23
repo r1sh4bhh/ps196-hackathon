@@ -75,6 +75,7 @@ function profile(patientId, age, heightCm, weightKg, baselineSymptoms = []) {
 }
 
 function assessment(id, patientId, timestamp, age, values, symptoms = []) {
+  const profile = demoProfiles.find((demoProfile) => demoProfile.patientId === patientId);
   return {
     id,
     timestamp,
@@ -88,8 +89,8 @@ function assessment(id, patientId, timestamp, age, values, symptoms = []) {
         diastolic_bp: values.diastolicBp,
         heart_rate: 72,
         temperature: 98.4,
-        weight_kg: patientId === "DEMO-STABLE-002" ? 62 : patientId === "DEMO-BP-003" ? 84 : 72,
-        height_cm: patientId === "DEMO-STABLE-002" ? 165 : patientId === "DEMO-BP-003" ? 176 : 170,
+        weight_kg: profile?.questionnaire.weight_kg,
+        height_cm: profile?.questionnaire.height_cm,
       },
       symptoms,
       labs: {
