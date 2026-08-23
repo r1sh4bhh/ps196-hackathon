@@ -145,6 +145,29 @@ describe("App returning-patient recognition", () => {
 
     expect(container.textContent).toContain("Patient ID");
   });
+
+  it("groups patient actions and gives adding a family member primary hierarchy", () => {
+    seedProfile("P001", 45, 170);
+    localStorage.setItem("ps196_role", ROLES.PATIENT);
+
+    render();
+
+    const actionCluster = container.querySelector(".patient-actions");
+    expect(actionCluster).toBeTruthy();
+    expect(actionCluster.querySelector(".person-switcher")).toBeTruthy();
+    expect(actionCluster.textContent).toContain("Continuing as");
+    expect(actionCluster.textContent).toContain("Edit profile / redo onboarding");
+
+    const addButton = [...actionCluster.querySelectorAll("button")].find((button) =>
+      button.textContent.includes("Add a family member")
+    );
+    const editButton = [...actionCluster.querySelectorAll("button")].find((button) =>
+      button.textContent.includes("Edit profile / redo onboarding")
+    );
+
+    expect(addButton.classList.contains("btn-primary")).toBe(true);
+    expect(editButton.classList.contains("btn-secondary")).toBe(true);
+  });
 });
 
 describe("App multi-person switching", () => {
