@@ -64,6 +64,18 @@ describe("SymptomInput automatic parsing", () => {
     expect(container.textContent).not.toContain("Review what we understood");
   });
 
+  it("recognises 'pain in chest' without a determiner, matching 'pain in my chest'", () => {
+    const onChange = vi.fn();
+    act(() => root.render(<Harness onChange={onChange} />));
+
+    typeDescription("pain in chest");
+    finishDebounce();
+
+    expect(onChange).toHaveBeenLastCalledWith(["chest_pain"]);
+    expect(container.textContent).toContain("Chest pain");
+    expect(container.textContent).not.toContain("didn’t recognise");
+  });
+
   it("flushes text synchronously before the debounce has fired", () => {
     const onChange = vi.fn();
     const inputRef = React.createRef();

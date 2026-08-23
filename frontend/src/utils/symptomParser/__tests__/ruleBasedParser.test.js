@@ -185,6 +185,79 @@ describe("ruleBasedParser", () => {
         ruleBasedParser.parse("chest tightness").matched.map(({ symptom }) => symptom)
       ).toEqual(["chest_pain"]);
     });
+
+    it("maps '<sensation> in <part>' without a determiner", () => {
+      expect(
+        ruleBasedParser.parse("pain in chest").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in stomach").matched.map(({ symptom }) => symptom)
+      ).toEqual(["stomach_pain"]);
+      expect(
+        ruleBasedParser.parse("ache in back").matched.map(({ symptom }) => symptom)
+      ).toEqual(["back_pain"]);
+      expect(
+        ruleBasedParser.parse("discomfort in chest").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+      expect(
+        ruleBasedParser.parse("tightness in chest").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+    });
+
+    it("maps '<sensation> in <part>' with possessive determiners", () => {
+      expect(
+        ruleBasedParser.parse("pain in his chest").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in her stomach").matched.map(({ symptom }) => symptom)
+      ).toEqual(["stomach_pain"]);
+      expect(
+        ruleBasedParser.parse("pain in their back").matched.map(({ symptom }) => symptom)
+      ).toEqual(["back_pain"]);
+    });
+
+    it("maps 'pain behind eyes' without a determiner", () => {
+      expect(
+        ruleBasedParser.parse("pain behind eyes").matched.map(({ symptom }) => symptom)
+      ).toEqual(["pain_behind_the_eyes"]);
+      expect(
+        ruleBasedParser.parse("ache behind the eyes").matched.map(({ symptom }) => symptom)
+      ).toEqual(["pain_behind_the_eyes"]);
+    });
+
+    it("handles the plural form of the sensation word", () => {
+      expect(
+        ruleBasedParser.parse("chest pains").matched.map(({ symptom }) => symptom)
+      ).toEqual(["chest_pain"]);
+      expect(
+        ruleBasedParser.parse("stomach pains").matched.map(({ symptom }) => symptom)
+      ).toEqual(["stomach_pain"]);
+    });
+
+    it("still routes 'pain in abdomen' through the ambiguous channel", () => {
+      const result = ruleBasedParser.parse("pain in abdomen");
+      expect(result.matched).toEqual([]);
+      expect(result.ambiguous).toEqual([
+        { matchedText: "abdomen", candidates: ["stomach_pain", "abdominal_pain"] },
+      ]);
+    });
+
+    it("still negates the newly-matching phrasings", () => {
+      const noPain = ruleBasedParser.parse("no pain in chest");
+      expect(noPain.matched).toEqual([]);
+      expect(noPain.negated.map(({ symptom }) => symptom)).toEqual(["chest_pain"]);
+
+      const notHaving = ruleBasedParser.parse("not having pain in chest");
+      expect(notHaving.matched).toEqual([]);
+      expect(notHaving.negated.map(({ symptom }) => symptom)).toEqual(["chest_pain"]);
+    });
+
+    it("does not rewrite 'pain in general' into a symptom", () => {
+      const result = ruleBasedParser.parse("pain in general");
+      expect(result.matched).toEqual([]);
+      expect(result.ambiguous).toEqual([]);
+      expect(result.unmatched).toEqual(["pain in general"]);
+    });
   });
 
   describe("filler-word tolerance", () => {

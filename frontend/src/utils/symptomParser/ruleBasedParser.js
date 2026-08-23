@@ -153,7 +153,14 @@ export const ruleBasedParser = Object.freeze({
 });
 
 function normalize(text) {
-  return rewriteInvertedPhrasing(stripFillers(text));
+  return rewriteInvertedPhrasing(stripFillers(singularizeSensationWords(text)));
+}
+
+// "chest pains" / "stomach pains" -> "chest pain" / "stomach pain" so the
+// plural form still hits the same exact-phrase and rewrite-rule lookups as
+// the singular form.
+function singularizeSensationWords(text) {
+  return text.replace(/\b(pain|ache)s\b/g, "$1");
 }
 
 function stripFillers(text) {
@@ -168,15 +175,24 @@ function stripFillers(text) {
 function rewriteInvertedPhrasing(text) {
   let result = text;
 
-  // "pain behind my eyes" / "ache behind the eyes" -> pain behind the eyes
+  // "pain behind my eyes" / "ache behind the eyes" / "pain behind eyes" ->
+  // pain behind the eyes
   result = result.replace(
-    new RegExp(`\\b(?:${SENSATION_WORDS})\\s+behind\\s+(?:my|the)\\s+eyes\\b`, "g"),
+    new RegExp(
+      `\\b(?:${SENSATION_WORDS})\\s+behind\\s+(?:(?:my|the|his|her|their|a)\\s+)?eyes\\b`,
+      "g"
+    ),
     (match) => rewrittenPhraseFor("pain_behind_the_eyes") ?? match
   );
 
-  // "<sensation> in (my|the) <part>" -> "<part>_pain" (or its mapped term)
+  // "<sensation> in (my|the|his|her|their|a) <part>" -> "<part>_pain" (or its
+  // mapped term). The determiner is optional so "pain in chest" rewrites
+  // just like "pain in my chest".
   result = result.replace(
-    new RegExp(`\\b(?:${SENSATION_WORDS})\\s+in\\s+(?:my|the)\\s+([a-z]+)\\b`, "g"),
+    new RegExp(
+      `\\b(?:${SENSATION_WORDS})\\s+in\\s+(?:(?:my|the|his|her|their|a)\\s+)?([a-z]+)\\b`,
+      "g"
+    ),
     (match, part) => rewrittenPhraseForPart(part) ?? match
   );
 
