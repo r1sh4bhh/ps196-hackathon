@@ -82,23 +82,28 @@ Response Body:
     "trajectory": [
       {
         "day": 1,
-        "risk": 0.82
+        "risk": 0.83,
+        "illustrative": true
       },
       {
         "day": 2,
-        "risk": 0.83
+        "risk": 0.84,
+        "illustrative": true
       },
       {
         "day": 3,
-        "risk": 0.84
+        "risk": 0.85,
+        "illustrative": true
       },
       {
         "day": 4,
-        "risk": 0.85
+        "risk": 0.86,
+        "illustrative": true
       },
       {
         "day": 5,
-        "risk": 0.86
+        "risk": 0.87,
+        "illustrative": true
       }
     ],
     "evidence": [
@@ -114,6 +119,19 @@ Response Body:
 }
 ```
 
+### `trajectory` is illustrative, not a forecast
+
+`trajectory` is **not** a model output. `backend/routes/predict.js` builds it by
+adding a fixed `0.01` per day to today's top risk score (capped at `0.99`) — a
+straight line, not a prediction. Every point therefore carries
+`illustrative: true` so the UI can label it honestly.
+
+The dashboard's risk-trend chart does **not** use this field: the frontend
+builds a real trend from stored assessment history
+(`frontend/src/utils/trajectory.js`), where each point is an actual past visit
+and the `day` index is the visit number, not a future day. `trajectory` remains
+in the response for compatibility; do not treat it as a forecast.
+
 ### Additive fields (optional, may be absent)
 
 When the real ML layer (`USE_MOCK_ML=false`) produces a prediction, the response also
@@ -126,9 +144,11 @@ includes:
   discarded so the honest caveats survive the trip to the frontend. Includes
   `symptom_differential`, `diabetes_risk`, `cardiac_risk`, `hypertension`, `obesity`,
   `review_priority`, `degraded`, and `disclaimer` — in particular the `partial_input`,
-  `missing_key_inputs`, `risk_band`, `confidence_is_ranking_only`, and `sparse_input`
-  flags nested within those sections. The frontend may ignore this field today; it must
-  not be removed from the response.
+  `missing_key_inputs`, `defaulted_features`, `risk_band`, `confidence_is_ranking_only`,
+  and `sparse_input` flags nested within those sections. `defaulted_features` lists the
+  model features that were filled from training medians/defaults rather than from the
+  submitted patient record (`diabetes_risk` and `cardiac_risk` only). The frontend may
+  ignore this field today; it must not be removed from the response.
 - `trajectory[].illustrative`: `true` on every point — the trajectory is a placeholder
   curve (today's top risk plus a fixed increment per day), not a model forecast.
 
