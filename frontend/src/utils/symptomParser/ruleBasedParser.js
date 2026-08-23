@@ -26,6 +26,40 @@ const FILLER_PHRASES = [
   "some",
 ];
 
+// Frequency/intensity modifiers that all mean "abnormally often/much". They
+// are collapsed to one canonical form so a single base phrase (e.g.
+// "peeing a lot") covers the whole family instead of SYMPTOM_SYNONYMS having
+// to enumerate every base-phrase/modifier combination.
+// Longer phrases are listed before the shorter phrases they contain.
+const FREQUENCY_MODIFIER = "a lot";
+const FREQUENCY_MODIFIERS = [
+  "more than usual",
+  "more often",
+  "all the time",
+  "too much",
+  "excessively",
+  "constantly",
+  "frequently",
+  "a lot",
+  "often",
+  "lots",
+];
+
+// Minimal, explicit inflection rewrites for action words that appear in the
+// synonym list. Deliberately not a general stemmer: a broad stemmer would
+// create false matches against the frozen vocabulary.
+const INFLECTION_REWRITES = {
+  vomit: "vomiting",
+  vomits: "vomiting",
+  vomited: "vomiting",
+  puke: "puking",
+  pukes: "puking",
+  puked: "puking",
+  urinate: "urinating",
+  urinates: "urinating",
+  urinated: "urinating",
+};
+
 // Sensation words that combine with a body part to describe pain in an
 // inverted construction, e.g. "pain in my chest" or "ache in the back".
 const SENSATION_WORDS =
@@ -153,7 +187,26 @@ export const ruleBasedParser = Object.freeze({
 });
 
 function normalize(text) {
-  return rewriteInvertedPhrasing(stripFillers(singularizeSensationWords(text)));
+  return rewriteInvertedPhrasing(
+    normalizeInflections(normalizeFrequencyModifiers(stripFillers(singularizeSensationWords(text))))
+  );
+}
+
+// "peeing more often" / "peeing constantly" -> "peeing a lot" so one synonym
+// phrase covers every equivalent modifier. The modifier is never dropped:
+// a bare base word such as "peeing" must not match a symptom on its own.
+function normalizeFrequencyModifiers(text) {
+  let result = text;
+  for (const modifier of FREQUENCY_MODIFIERS) {
+    const expression = new RegExp(`\\b${escapeRegExp(modifier)}\\b`, "g");
+    result = result.replace(expression, FREQUENCY_MODIFIER);
+  }
+  return result.replace(/\s+/g, " ").trim();
+}
+
+// "vomited" / "vomits" -> "vomiting", using an explicit word list only.
+function normalizeInflections(text) {
+  return text.replace(/\b[a-z]+\b/g, (word) => INFLECTION_REWRITES[word] ?? word);
 }
 
 // "chest pains" / "stomach pains" -> "chest pain" / "stomach pain" so the
