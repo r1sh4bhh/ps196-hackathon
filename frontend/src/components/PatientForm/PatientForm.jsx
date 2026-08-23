@@ -128,6 +128,7 @@ export default function PatientForm({
         patientData: normalized,
         prediction,
         baselines,
+        reusedLabs,
       });
       const fullHistory = listAssessments(normalized.patientId);
       const trajectory = prediction.top_disease

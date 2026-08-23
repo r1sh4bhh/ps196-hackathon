@@ -30,6 +30,7 @@ import { buildBaselineHistory } from "./vitals/aggregateDailyReadings";
 import { listReadings } from "./storage/vitalsReadingStore";
 import ThemeToggle from "./components/ThemeToggle";
 import VitalsProviderPanel from "./components/VitalsProvider/VitalsProviderPanel";
+import VisitHistory from "./components/VisitHistory/VisitHistory";
 
 function hasReturnVisitHistory(patientId) {
   return Boolean(patientId) && listAssessments(patientId).length > 0;
@@ -58,6 +59,7 @@ export default function App() {
   const [demoVersion, setDemoVersion] = useState(0);
   const [demoLoadError, setDemoLoadError] = useState(null);
   const [demoLoadingPatientId, setDemoLoadingPatientId] = useState(null);
+  const [historyRoute, setHistoryRoute] = useState(null);
   const demoRequestId = useRef(0);
 
   const handleRoleSelected = (nextRole) => {
@@ -118,6 +120,11 @@ export default function App() {
   const handleBackToPatientList = () => {
     demoRequestId.current += 1;
     setView("clinician-list");
+  };
+
+  const handleViewHistory = (patientId, returnView) => {
+    setHistoryRoute({ patientId, returnView });
+    setView("history");
   };
 
   const isReturningVisit = hasReturnVisitHistory(profile?.patientId);
@@ -248,6 +255,7 @@ export default function App() {
           onAddPatient={handleAddPerson}
           onLoadDemoPatients={handleLoadDemoHistory}
           onClearDemoPatients={handleClearDemoHistory}
+          onViewHistory={(patientId) => handleViewHistory(patientId, "clinician-list")}
         />
       )}
 
@@ -278,6 +286,15 @@ export default function App() {
       )}
 
       {view === "onboarding" && <OnboardingWizard onComplete={handleOnboardingComplete} />}
+
+      {view === "history" && historyRoute ? (
+        <VisitHistory
+          key={historyRoute.patientId}
+          patientId={historyRoute.patientId}
+          visits={listAssessments(historyRoute.patientId)}
+          onBack={() => setView(historyRoute.returnView)}
+        />
+      ) : null}
 
       {view === "form" && (
         <>
@@ -342,6 +359,7 @@ export default function App() {
             trajectory={trajectory}
             reusedLabs={reusedLabs}
             onBackToForm={() => setView("form")}
+            onViewHistory={() => handleViewHistory(patientData?.patientId, "dashboard")}
           />
         </>
       )}

@@ -63,6 +63,9 @@ export function saveAssessment(record) {
     patientData: record?.patientData || null,
     prediction: selectPrediction(record?.prediction),
     baselines: record?.baselines || {},
+    reusedLabs: record?.reusedLabs || {},
+    source: record?.source ?? null,
+    simulated: record?.simulated === true,
     isDemo: record?.isDemo === true,
   };
   const assessments = loadRepository().filter((entry) => entry.id !== assessment.id);
@@ -128,6 +131,7 @@ function selectPrediction(prediction) {
     next_test: prediction?.next_test || prediction?.evidence?.[0]?.next_test || null,
     source: prediction?.source ?? null,
     fallback_reason: prediction?.fallback_reason ?? null,
+    ml_detail: prediction?.ml_detail || null,
   };
 }
 

@@ -240,6 +240,31 @@ describe("App clinician patient list", () => {
     expect(container.textContent).toContain("P001");
   });
 
+  it("opens an isolated patient history directly and returns to the clinician list", () => {
+    seedProfile("P001", 45, 170);
+    seedAssessment("P001", 45, 170);
+    seedProfile("P002", 30, 165);
+    seedAssessment("P002", 30, 165);
+    localStorage.setItem("ps196_role", ROLES.CLINICIAN);
+    render();
+
+    const p001Item = [...container.querySelectorAll(".clinician-patient-list-item")].find((item) =>
+      item.textContent.includes("P001")
+    );
+    act(() => p001Item.querySelector(".clinician-patient-history").click());
+
+    expect(container.textContent).toContain("Visit history");
+    expect(container.textContent).toContain("Patient P001");
+    expect(container.textContent).not.toContain("Patient P002");
+
+    const back = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Back"
+    );
+    act(() => back.click());
+    expect(container.textContent).toContain("Patients");
+    expect(container.textContent).toContain("P002");
+  });
+
   it("loads clearly marked demo patients only after a clinician opts in", () => {
     localStorage.setItem("ps196_role", ROLES.CLINICIAN);
     render();

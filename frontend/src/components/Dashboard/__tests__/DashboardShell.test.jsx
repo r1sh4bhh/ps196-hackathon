@@ -1,6 +1,6 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardShell, { getRiskTier } from "../DashboardShell";
 
 let container;
@@ -32,6 +32,20 @@ const basePrediction = {
 };
 
 describe("DashboardShell source badge", () => {
+  it("provides access to the full visit history", () => {
+    const onViewHistory = vi.fn();
+    const dom = render({
+      prediction: { ...basePrediction, source: "model" },
+      onViewHistory,
+    });
+    const button = [...dom.querySelectorAll("button")].find((item) =>
+      item.textContent.includes("Full visit history")
+    );
+
+    act(() => button.click());
+    expect(onViewHistory).toHaveBeenCalledOnce();
+  });
+
   it("renders a neutral badge for model output", () => {
     const dom = render({ prediction: { ...basePrediction, source: "model" } });
     const badge = dom.querySelector(".source-badge");
