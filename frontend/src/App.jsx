@@ -190,6 +190,23 @@ export default function App() {
     setDemoVersion((version) => version + 1);
   };
 
+  const profileUtilityActions = (
+    <>
+      <button type="button" className="btn-secondary" onClick={handleRedoOnboarding}>
+        Edit profile / redo onboarding
+      </button>
+      <button type="button" className="btn-secondary" onClick={handleLoadDemoHistory}>
+        Load demo patients
+      </button>
+      <ConfirmButton
+        label="Clear demo patients"
+        confirmLabel="Yes, clear demo patients"
+        message={CLEAR_DEMO_CONFIRMATION}
+        onConfirm={handleClearDemoHistory}
+      />
+    </>
+  );
+
   const loadDemoDashboard = async (patientId) => {
     const requestId = demoRequestId.current + 1;
     demoRequestId.current = requestId;
@@ -301,12 +318,18 @@ export default function App() {
       {view === "form" && (
         <>
           {role === ROLES.PATIENT && (
-            <PersonSwitcher
-              profiles={savedProfiles}
-              activePatientId={profile?.patientId}
-              onSwitch={handleSwitchPerson}
-              onAddPerson={handleAddPerson}
-            />
+            <section className="patient-actions" aria-label="Patient actions">
+              <PersonSwitcher
+                profiles={savedProfiles}
+                activePatientId={profile?.patientId}
+                onSwitch={handleSwitchPerson}
+                onAddPerson={handleAddPerson}
+                addButtonClassName="btn-primary"
+              />
+              <div className="profile-actions patient-action-utilities">
+                {profileUtilityActions}
+              </div>
+            </section>
           )}
           {role === ROLES.CLINICIAN && (
             <div className="profile-actions">
@@ -315,20 +338,9 @@ export default function App() {
               </button>
             </div>
           )}
-          <div className="profile-actions">
-            <button type="button" className="btn-secondary" onClick={handleRedoOnboarding}>
-              Edit profile / redo onboarding
-            </button>
-            <button type="button" className="btn-secondary" onClick={handleLoadDemoHistory}>
-              Load demo patients
-            </button>
-            <ConfirmButton
-              label="Clear demo patients"
-              confirmLabel="Yes, clear demo patients"
-              message={CLEAR_DEMO_CONFIRMATION}
-              onConfirm={handleClearDemoHistory}
-            />
-          </div>
+          {role === ROLES.CLINICIAN && (
+            <div className="profile-actions">{profileUtilityActions}</div>
+          )}
           {profile?.patientId ? (
             // Keyed by patientId for the same reason the form is: device
             // readings are strictly per-person and must never carry over when

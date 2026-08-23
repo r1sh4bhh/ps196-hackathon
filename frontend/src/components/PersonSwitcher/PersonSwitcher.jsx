@@ -11,6 +11,7 @@ export default function PersonSwitcher({
   onSwitch,
   onAddPerson,
   addLabel = "Add a family member",
+  addButtonClassName = "btn-secondary",
 }) {
   const active = profiles.find((profile) => profile.patientId === activePatientId);
 
@@ -35,7 +36,7 @@ export default function PersonSwitcher({
           </select>
         </label>
       )}
-      <button type="button" className="btn-secondary" onClick={onAddPerson}>
+      <button type="button" className={addButtonClassName} onClick={onAddPerson}>
         {addLabel}
       </button>
     </div>
