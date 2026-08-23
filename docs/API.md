@@ -11,7 +11,8 @@ This document defines the data exchanged between the Frontend, Backend, and Mach
 
 ### Purpose
 
-Accept patient health data and return disease risk predictions, risk trajectory, evidence, and recommended next tests.
+Accept patient health data and return disease risk predictions, an illustrative
+trajectory, evidence, and recommended next tests.
 
 ---
 
@@ -40,11 +41,7 @@ Request Body:
       "weight_kg": 85,
       "height_cm": 175
     },
-    "symptoms": [
-      "fatigue",
-      "frequent_urination",
-      "blurred_vision"
-    ],
+    "symptoms": ["fatigue", "frequent_urination", "blurred_vision"],
     "labs": {
       "glucose": 145,
       "cholesterol": 220,
@@ -82,31 +79,34 @@ Response Body:
     "trajectory": [
       {
         "day": 1,
-        "risk": 0.82
+        "risk": 0.83,
+        "illustrative": true
       },
       {
         "day": 2,
-        "risk": 0.83
+        "risk": 0.84,
+        "illustrative": true
       },
       {
         "day": 3,
-        "risk": 0.84
+        "risk": 0.85,
+        "illustrative": true
       },
       {
         "day": 4,
-        "risk": 0.85
+        "risk": 0.86,
+        "illustrative": true
       },
       {
         "day": 5,
-        "risk": 0.86
+        "risk": 0.87,
+        "illustrative": true
       }
     ],
     "evidence": [
       {
         "disease": "diabetes",
-        "factors": [
-          "high_glucose"
-        ],
+        "factors": ["high_glucose"],
         "next_test": "HbA1c"
       }
     ]
@@ -126,9 +126,10 @@ includes:
   discarded so the honest caveats survive the trip to the frontend. Includes
   `symptom_differential`, `diabetes_risk`, `cardiac_risk`, `hypertension`, `obesity`,
   `review_priority`, `degraded`, and `disclaimer` — in particular the `partial_input`,
-  `missing_key_inputs`, `risk_band`, `confidence_is_ranking_only`, and `sparse_input`
-  flags nested within those sections. The frontend may ignore this field today; it must
-  not be removed from the response.
+  `missing_key_inputs`, `defaulted_features`, `risk_band`,
+  `confidence_is_ranking_only`, and `sparse_input` fields nested within those
+  sections. The frontend may ignore this field today; it must not be removed from
+  the response.
 - `trajectory[].illustrative`: `true` on every point — the trajectory is a placeholder
   curve (today's top risk plus a fixed increment per day), not a model forecast.
 
@@ -237,4 +238,5 @@ Python builds its own vector using `MODEL_A_SYMPTOMS`.
 - Frontend components should be developed using mock data before backend integration.
 - Backend should initially support a mock ML response before the real ML model is integrated.
 - ML development should be independent of the Frontend.
-- The final system must support local/offline operation.
+- This hosted API requires a network connection; local/offline operation requires
+  running the backend and Python inference layer on the same local machine.
