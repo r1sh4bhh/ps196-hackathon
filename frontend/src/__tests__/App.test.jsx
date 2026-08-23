@@ -168,6 +168,50 @@ describe("App returning-patient recognition", () => {
     expect(addButton.classList.contains("btn-primary")).toBe(true);
     expect(editButton.classList.contains("btn-secondary")).toBe(true);
   });
+
+  it("demotes the demo utilities behind a disclosure and keeps them reachable", () => {
+    seedProfile("P001", 45, 170);
+    localStorage.setItem("ps196_role", ROLES.PATIENT);
+
+    render();
+
+    const actionCluster = container.querySelector(".patient-actions");
+    const demoControls = actionCluster.querySelector("details.patient-demo-controls");
+    expect(demoControls).toBeTruthy();
+    expect(demoControls.open).toBe(false);
+    expect(demoControls.querySelector("summary").textContent).toBe("Demo controls");
+
+    // The demo utilities live inside the disclosure, not beside the primary
+    // action, but stay one click away.
+    const demoLabels = [...demoControls.querySelectorAll("button")].map((button) =>
+      button.textContent.trim()
+    );
+    expect(demoLabels).toContain("Load demo patients");
+    expect(demoLabels).toContain("Clear demo patients");
+    // The primary action and the genuine profile action stay outside it.
+    expect(demoControls.textContent).not.toContain("Add a family member");
+    expect(demoControls.textContent).not.toContain("Edit profile / redo onboarding");
+  });
+
+  it("still requires a confirmation to clear demo patients from the patient view", () => {
+    seedProfile("P001", 45, 170);
+    localStorage.setItem("ps196_role", ROLES.PATIENT);
+
+    render();
+
+    const demoControls = container.querySelector("details.patient-demo-controls");
+    const clearButton = [...demoControls.querySelectorAll("button")].find(
+      (button) => button.textContent.trim() === "Clear demo patients"
+    );
+    act(() => clearButton.click());
+
+    expect(container.querySelector(".confirm-action")).toBeTruthy();
+    expect(
+      [...container.querySelectorAll("button")].some(
+        (button) => button.textContent.trim() === "Yes, clear demo patients"
+      )
+    ).toBe(true);
+  });
 });
 
 describe("App form-view actions by role", () => {

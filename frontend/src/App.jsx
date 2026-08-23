@@ -190,12 +190,18 @@ export default function App() {
     setDemoVersion((version) => version + 1);
   };
 
-  const profileUtilityActions = (
+  // Split by hierarchy, not by convenience: editing the profile is a real user
+  // action, while loading and clearing demo patients are dev utilities that
+  // should not sit at the same visual weight beside them.
+  const editProfileAction = (
+    <button type="button" className="btn-secondary" onClick={handleRedoOnboarding}>
+      Edit profile / redo onboarding
+    </button>
+  );
+
+  const demoDataActions = (
     <>
-      <button type="button" className="btn-secondary" onClick={handleRedoOnboarding}>
-        Edit profile / redo onboarding
-      </button>
-      <button type="button" className="btn-secondary" onClick={handleLoadDemoHistory}>
+      <button type="button" className="btn-ghost" onClick={handleLoadDemoHistory}>
         Load demo patients
       </button>
       <ConfirmButton
@@ -203,6 +209,7 @@ export default function App() {
         confirmLabel="Yes, clear demo patients"
         message={CLEAR_DEMO_CONFIRMATION}
         onConfirm={handleClearDemoHistory}
+        className="btn-ghost"
       />
     </>
   );
@@ -328,20 +335,27 @@ export default function App() {
                 onAddPerson={handleAddPerson}
                 addButtonClassName="btn-primary"
               />
-              <div className="profile-actions patient-action-utilities">
-                {profileUtilityActions}
-              </div>
+              <div className="profile-actions patient-action-utilities">{editProfileAction}</div>
+              <details className="patient-demo-controls">
+                <summary>Demo controls</summary>
+                <div className="patient-demo-controls-actions">{demoDataActions}</div>
+              </details>
             </section>
           )}
           {role === ROLES.CLINICIAN && (
             // One row, not two: "Back to patient list" and the profile/demo
             // utilities are the same kind of action here, and two stacked
-            // `.profile-actions` divs read as an accidental split.
+            // `.profile-actions` divs read as an accidental split. The demo
+            // utilities are not folded into a disclosure as they are for a
+            // patient: a clinician deliberately loads demo patients from the
+            // list view, so hiding them again here would cost a click for no
+            // gain. Their `btn-ghost` weight keeps them quiet in the row.
             <div className="profile-actions">
               <button type="button" className="btn-secondary" onClick={handleBackToPatientList}>
                 Back to patient list
               </button>
-              {profileUtilityActions}
+              {editProfileAction}
+              {demoDataActions}
             </div>
           )}
           {profile?.patientId ? (

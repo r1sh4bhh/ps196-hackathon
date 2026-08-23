@@ -160,6 +160,31 @@ select.form-control:has(option:checked[value=""]) {
   gap: var(--space-2);
 }
 
+/* Demo/dev utilities, not patient actions: quieter than the person switcher
+   and "Add a family member", and folded away by default so the cluster does
+   not read as four controls of equal weight. */
+.patient-demo-controls {
+  margin-top: var(--space-1);
+}
+
+.patient-demo-controls > summary {
+  cursor: pointer;
+  width: fit-content;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.patient-demo-controls-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
 .demo-model-loading {
   max-width: 640px;
   margin: var(--space-6) auto;
