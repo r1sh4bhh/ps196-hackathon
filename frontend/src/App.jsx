@@ -345,7 +345,11 @@ export default function App() {
           {role === ROLES.CLINICIAN && (
             // One row, not two: "Back to patient list" and the profile/demo
             // utilities are the same kind of action here, and two stacked
-            // `.profile-actions` divs read as an accidental split.
+            // `.profile-actions` divs read as an accidental split. The demo
+            // utilities are not folded into a disclosure as they are for a
+            // patient: a clinician deliberately loads demo patients from the
+            // list view, so hiding them again here would cost a click for no
+            // gain. Their `btn-ghost` weight keeps them quiet in the row.
             <div className="profile-actions">
               <button type="button" className="btn-secondary" onClick={handleBackToPatientList}>
                 Back to patient list
