@@ -1,3 +1,5 @@
+import { API_LAB_KEYS } from "../constants/labAliases";
+
 const LEGACY_PROFILE_KEY = "ps196_user_profile";
 const PROFILES_KEY = "ps196_user_profiles";
 const DRAFT_KEY = "ps196_onboarding_draft";
@@ -109,7 +111,9 @@ export function saveProfile(profile, { setActive = true } = {}) {
   }
 
   const store = loadStore();
+  const existingLabResults = store.profiles[profile.patientId]?.labResults;
   const record = {
+    ...(existingLabResults ? { labResults: existingLabResults } : {}),
     ...profile,
     schemaVersion: SCHEMA_VERSION,
     updatedAt: new Date().toISOString(),
@@ -132,6 +136,61 @@ export function loadProfile(patientId) {
     return null;
   }
   return runMigrations(store.profiles[id]);
+}
+
+export function loadLabResults(patientId) {
+  const records = loadProfile(patientId)?.labResults;
+  if (!records || typeof records !== "object") {
+    return {};
+  }
+
+  return Object.fromEntries(
+    API_LAB_KEYS.flatMap((key) => {
+      const record = records[key];
+      const value = Number(record?.value);
+      if (
+        record?.value === "" ||
+        !Number.isFinite(value) ||
+        typeof record?.recordedAt !== "string" ||
+        !Number.isFinite(Date.parse(record.recordedAt))
+      ) {
+        return [];
+      }
+      return [[key, { value, recordedAt: new Date(record.recordedAt).toISOString() }]];
+    })
+  );
+}
+
+// Records only labs supplied on this visit. Reused values retain their
+// original measurement timestamp rather than becoming falsely "new".
+export function saveLabResults(
+  patientId,
+  labs,
+  { recordedAt = new Date().toISOString(), reusedLabs = {} } = {}
+) {
+  const profile = loadProfile(patientId);
+  if (!profile || !labs || typeof labs !== "object") {
+    return null;
+  }
+
+  const labResults = loadLabResults(patientId);
+  for (const key of API_LAB_KEYS) {
+    const value = labs[key];
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
+
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      continue;
+    }
+    if (reusedLabs[key]) {
+      continue;
+    }
+    labResults[key] = { value: numeric, recordedAt: new Date(recordedAt).toISOString() };
+  }
+
+  return saveProfile({ ...profile, labResults }, { setActive: false });
 }
 
 export function hasProfile(patientId) {

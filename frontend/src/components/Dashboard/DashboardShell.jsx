@@ -10,6 +10,8 @@ import {
   getSymptomDifferential,
   isDegraded,
 } from "../../utils/mlDetail";
+import { LAB_DEFINITIONS } from "../../constants/labAliases";
+import { formatStoredLabAge } from "../../utils/labFreshness";
 import "./dashboardShell.css";
 
 // Sparse rankings below 0.4 are too weak to present as meaningful review prompts.
@@ -36,6 +38,7 @@ export default function DashboardShell({
   baselineCurrent,
   baselineData,
   trajectory,
+  reusedLabs = {},
   onBackToForm,
 }) {
   if (!prediction) {
@@ -61,6 +64,22 @@ export default function DashboardShell({
     differential?.sparseInput === true &&
     Number.isFinite(topDifferentialScore) &&
     topDifferentialScore < MIN_SPARSE_DIFFERENTIAL_SCORE;
+  const reusedLabSummary = Object.entries(reusedLabs)
+    .map(([key, record]) => {
+      const definition = LAB_DEFINITIONS[key];
+      if (!definition) return null;
+      const prefix = record.isStale ? "Stale value explicitly reused" : "Carried forward";
+      return `${prefix}: ${definition.label} ${record.value} ${definition.unit} — ${formatStoredLabAge(record)}`;
+    })
+    .filter(Boolean)
+    .join("; ");
+  const riskScoreEntries = Object.entries(riskScores);
+  const reuseCaveatDisease = Object.prototype.hasOwnProperty.call(
+    riskScores,
+    prediction.top_disease
+  )
+    ? prediction.top_disease
+    : riskScoreEntries[0]?.[0];
 
   return (
     <div className="dashboard-shell">
@@ -93,9 +112,10 @@ export default function DashboardShell({
       ) : null}
 
       <section className="summary-cards">
-        {Object.entries(riskScores).map(([disease, score]) => {
+        {riskScoreEntries.map(([disease, score]) => {
           const detail = getRiskDetail(prediction, disease);
           const tier = getRiskTier(detail?.band);
+          const showsReuseCaveat = disease === reuseCaveatDisease && reusedLabSummary;
 
           return (
             <div className={`summary-card${tier ? ` risk-tier-${tier}` : ""}`} key={disease}>
@@ -112,12 +132,19 @@ export default function DashboardShell({
               {detail?.provenance === "model" ? (
                 <span className="risk-provenance">Model-derived score</span>
               ) : null}
-              {detail?.partialInput ? (
+              {detail?.partialInput || showsReuseCaveat ? (
                 <span className="risk-caveat">
-                  Computed without all trained features
-                  {detail.missingKeyInputs.length
-                    ? `; missing: ${detail.missingKeyInputs.join(", ")}`
-                    : ""}
+                  {detail?.partialInput ? (
+                    <span className="risk-caveat-line">
+                      Computed without all trained features
+                      {detail.missingKeyInputs.length
+                        ? `; missing: ${detail.missingKeyInputs.join(", ")}`
+                        : ""}
+                    </span>
+                  ) : null}
+                  {showsReuseCaveat ? (
+                    <span className="risk-caveat-line">{reusedLabSummary}</span>
+                  ) : null}
                 </span>
               ) : null}
             </div>

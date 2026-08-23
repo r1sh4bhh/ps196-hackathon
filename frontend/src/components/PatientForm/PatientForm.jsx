@@ -8,6 +8,8 @@ import { submitPatientData } from "../../api/predictService";
 import { computeAllBaselines } from "../../utils/baseline";
 import { listAssessments, saveAssessment } from "../../storage/assessmentHistory";
 import { buildRiskTrajectory } from "../../utils/trajectory";
+import { getStoredLabStatus } from "../../utils/labFreshness";
+import { saveLabResults } from "../../storage/userProfileStore";
 import "./patientForm.css";
 
 const initialState = {
@@ -30,8 +32,15 @@ const initialState = {
   },
 };
 
-export default function PatientForm({ onPredictionReceived, initialData, mode = "full", personLabel }) {
-  const [formData, setFormData] = useState(() => mergeInitialData(initialData));
+export default function PatientForm({
+  onPredictionReceived,
+  initialData,
+  mode = "full",
+  personLabel,
+  storedLabs = {},
+}) {
+  const [formData, setFormData] = useState(() => mergeInitialData(initialData, storedLabs));
+  const [reusedLabs, setReusedLabs] = useState(() => freshStoredLabs(storedLabs));
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -67,6 +76,27 @@ export default function PatientForm({ onPredictionReceived, initialData, mode = 
     setFormData((previous) => ({ ...previous, symptoms }));
   };
 
+  const updateLab = (field, value) => {
+    updateField("labs", field, value);
+    setReusedLabs((previous) => {
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const reuseLab = (field) => {
+    const status = getStoredLabStatus(field, storedLabs[field]);
+    if (!status) {
+      return;
+    }
+    updateField("labs", field, status.value);
+    setReusedLabs((previous) => ({
+      ...previous,
+      [field]: { ...status, isStale: !status.isFresh },
+    }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitError(null);
@@ -83,6 +113,7 @@ export default function PatientForm({ onPredictionReceived, initialData, mode = 
     setIsSubmitting(true);
     try {
       const prediction = await submitPatientData(normalized);
+      saveLabResults(normalized.patientId, normalized.labs, { reusedLabs });
       const history = listAssessments(normalized.patientId);
       const baselines = computeAllBaselines(history, normalized);
       saveAssessment({
@@ -95,7 +126,14 @@ export default function PatientForm({ onPredictionReceived, initialData, mode = 
       const trajectory = prediction.top_disease
         ? buildRiskTrajectory(fullHistory, prediction.top_disease)
         : [];
-      onPredictionReceived(normalized, prediction, baselines, history[0]?.timestamp, trajectory);
+      onPredictionReceived(
+        normalized,
+        prediction,
+        baselines,
+        history[0]?.timestamp,
+        trajectory,
+        reusedLabs
+      );
     } catch (error) {
       setSubmitError(error.message || "Something went wrong. Please try again.");
     } finally {
@@ -160,7 +198,10 @@ export default function PatientForm({ onPredictionReceived, initialData, mode = 
       <LabFields
         labs={formData.labs}
         errors={errors}
-        onChange={(field, value) => updateField("labs", field, value)}
+        storedLabs={storedLabs}
+        reusedLabs={reusedLabs}
+        onChange={updateLab}
+        onReuse={reuseLab}
       />
 
       {submitError && <div className="form-error-banner">{submitError}</div>}
@@ -174,9 +215,9 @@ export default function PatientForm({ onPredictionReceived, initialData, mode = 
   );
 }
 
-function mergeInitialData(initialData) {
+function mergeInitialData(initialData, storedLabs = {}) {
   if (!initialData) {
-    return initialState;
+    return { ...initialState, vitals: { ...initialState.vitals }, labs: freshLabValues(storedLabs) };
   }
 
   return {
@@ -184,8 +225,26 @@ function mergeInitialData(initialData) {
     age: nullToEmpty(initialData.age) ?? initialState.age,
     vitals: mergeSection(initialState.vitals, initialData.vitals),
     symptoms: initialData.symptoms ?? initialState.symptoms,
-    labs: mergeSection(initialState.labs, initialData.labs),
+    labs: {
+      ...mergeSection(initialState.labs, initialData.labs),
+      ...freshLabValues(storedLabs),
+    },
   };
+}
+
+function freshStoredLabs(storedLabs) {
+  return Object.fromEntries(
+    Object.entries(storedLabs).flatMap(([key, record]) => {
+      const status = getStoredLabStatus(key, record);
+      return status?.isFresh ? [[key, { ...status, isStale: false }]] : [];
+    })
+  );
+}
+
+function freshLabValues(storedLabs) {
+  return Object.fromEntries(
+    Object.entries(freshStoredLabs(storedLabs)).map(([key, record]) => [key, record.value])
+  );
 }
 
 function mergeSection(defaults, overrides) {

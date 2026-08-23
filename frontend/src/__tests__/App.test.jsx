@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { ROLES, getRole } from "../storage/roleStore";
-import { saveProfile, setActivePatientId } from "../storage/userProfileStore";
+import { saveLabResults, saveProfile, setActivePatientId } from "../storage/userProfileStore";
 import { saveAssessment } from "../storage/assessmentHistory";
 
 vi.mock("../api/predictService", () => ({
@@ -165,6 +165,48 @@ describe("App multi-person switching", () => {
     expect(container.textContent).toContain("P001");
     expect(container.textContent).toContain("age 45");
     expect(container.textContent).not.toContain("age 30");
+  });
+
+  it("shows only the active person's stored labs when switching people", () => {
+    seedProfile("P001", 45, 170);
+    seedAssessment("P001", 45, 170);
+    saveLabResults("P001", { cholesterol: 181 });
+    seedProfile("P002", 30, 165);
+    seedAssessment("P002", 30, 165);
+    saveLabResults("P002", { cholesterol: 222 });
+    setActivePatientId("P002");
+    localStorage.setItem("ps196_role", ROLES.PATIENT);
+
+    render();
+    expect(container.textContent).toContain("Total Cholesterol 222 mg/dL");
+    expect(container.textContent).not.toContain("Total Cholesterol 181 mg/dL");
+
+    const select = container.querySelector(".person-switcher select");
+    act(() => {
+      select.value = "P001";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("Total Cholesterol 181 mg/dL");
+    expect(container.textContent).not.toContain("Total Cholesterol 222 mg/dL");
+  });
+
+  it("leaves return-visit labs blank for a legacy profile without timestamped lab history", () => {
+    saveProfile({
+      patientId: "legacy",
+      questionnaire: { age: 60, height_cm: 170, weight_kg: 70 },
+      labs: { manual: { glucose: 123 }, fromReports: {} },
+    });
+    seedAssessment("legacy", 60, 170);
+    localStorage.setItem("ps196_role", ROLES.PATIENT);
+
+    render();
+
+    const glucose = [...container.querySelectorAll("label")].find((label) =>
+      label.textContent.includes("Glucose")
+    );
+    expect(glucose.querySelector("input").value).toBe("");
+    expect(glucose.textContent).not.toContain("Previous result");
   });
 });
 

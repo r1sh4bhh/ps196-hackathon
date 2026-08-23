@@ -81,6 +81,14 @@
   padding: var(--space-2);
 }
 
+.risk-caveat-line {
+  display: block;
+}
+
+.risk-caveat-line + .risk-caveat-line {
+  margin-top: var(--space-1);
+}
+
 .dashboard-notice {
   margin: 0 0 var(--space-4);
   padding: var(--space-3) var(--space-4);

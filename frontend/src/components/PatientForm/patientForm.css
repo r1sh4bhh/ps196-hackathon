@@ -52,6 +52,28 @@ input {
   font-size: var(--text-base);
 }
 
+.lab-input-carried {
+  border-color: var(--color-primary);
+  background: var(--color-surface-subtle);
+}
+
+.lab-history {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.lab-history-stale {
+  color: var(--color-danger);
+}
+
+.lab-reuse {
+  display: block;
+  margin-top: var(--space-1);
+  padding: 0;
+  font-size: var(--text-xs);
+}
+
 .field-error {
   color: var(--color-danger);
   font-size: var(--text-xs);
