@@ -24,11 +24,25 @@ app.use("/predict", predictRoute);
 const distPath = path.join(__dirname, "..", "frontend", "dist");
 const indexHtmlPath = path.join(distPath, "index.html");
 
+// Paths owned by the API. An unmatched request under one of these (e.g. a
+// typo'd endpoint, or GET /predict where only POST exists) is an API error
+// and must still get the JSON 404 below, not a 200 page of HTML.
+const API_PREFIXES = ["/health", "/predict"];
+
+function isApiPath(pathname) {
+  return API_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 // Running the backend locally without building the frontend is a supported
 // workflow, so a missing dist directory must not stop the API from serving.
 if (fs.existsSync(indexHtmlPath)) {
   app.use(express.static(distPath));
-  app.get("*", (req, res) => {
+  app.get("*", (req, res, next) => {
+    if (isApiPath(req.path)) {
+      return next();
+    }
     res.sendFile(indexHtmlPath);
   });
 } else {
