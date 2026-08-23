@@ -194,6 +194,7 @@ describe("App form-view actions by role", () => {
 
     render();
 
+    expect(container.querySelectorAll(".patient-actions").length).toBe(1);
     PROFILE_UTILITIES.forEach((label) => expect(countLabel(label)).toBe(1));
     expect(countLabel("Add a family member")).toBe(1);
     expect(countLabel("Back to patient list")).toBe(0);
