@@ -12,7 +12,7 @@
 
 .source-badge-model {
   background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   color: var(--color-muted);
   font-weight: 500;
 }
@@ -25,6 +25,5 @@
 
 .source-badge-reason {
   font-weight: 400;
-  font-size: 11px;
-  opacity: 0.85;
+  font-size: var(--text-xs);
 }

@@ -293,10 +293,17 @@ describe("App clinician patient list", () => {
       button.textContent.includes("Load demo patients")
     );
     act(() => loadButton.click());
-    const clearButton = [...container.querySelectorAll("button")].find((button) =>
-      button.textContent.includes("Clear demo patients")
+    const clearButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent.trim() === "Clear demo patients"
     );
     act(() => clearButton.click());
+
+    // Clearing is destructive, so it takes a confirmation click.
+    expect(container.textContent).toContain("DEMO-MET-001");
+    const confirmButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent.trim() === "Yes, clear demo patients"
+    );
+    act(() => confirmButton.click());
 
     expect(container.textContent).toContain("REAL-001");
     expect(container.textContent).not.toContain("DEMO-MET-001");

@@ -6,6 +6,9 @@
   --color-text: #17241f;
   --color-muted: #52645e;
   --color-border: #cfdbd6;
+  /* Boundary colour for badges and dividers that must clear 3:1 against both
+     --color-surface and --color-surface-subtle. */
+  --color-border-strong: #7e8f88;
   --color-primary: #276b59;
   --color-primary-strong: #1d5445;
   --color-focus: #0b7a62;
@@ -13,9 +16,12 @@
   --color-danger-bg: #fbe9e7;
   --color-warning: #9a6500;
   --color-warning-bg: #fff4d6;
+  /* Text-on-warning-bg pairing: --color-warning itself only reaches 4.5:1 on
+     that background, which is too thin for small text on a projector. */
+  --color-warning-strong: #7d5200;
   --color-risk-low: #27735c;
   --color-risk-moderate: #9a6500;
-  --color-risk-high: #bd6815;
+  --color-risk-high: #a85c12;
   --color-risk-severe: #b93c31;
   --control-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%2352645e' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
   --space-1: 0.25rem;
@@ -46,6 +52,7 @@
   --color-text: #f4f6f8;
   --color-muted: #c1c7d0;
   --color-border: #454b57;
+  --color-border-strong: #78808f;
   --color-primary: #76c6aa;
   --color-primary-strong: #a0dec8;
   --color-focus: #9be4ca;
@@ -53,6 +60,7 @@
   --color-danger-bg: #452522;
   --color-warning: #ffd06b;
   --color-warning-bg: #463819;
+  --color-warning-strong: #ffe0a0;
   --color-risk-low: #80d5b5;
   --color-risk-moderate: #ffcf6a;
   --color-risk-high: #ffae62;

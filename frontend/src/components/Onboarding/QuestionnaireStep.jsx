@@ -5,6 +5,7 @@ import {
   isQuestionVisible,
   computeBmi,
 } from "../../constants/questionnaire";
+import { formatOptionLabel } from "../../utils/format";
 import SymptomInput from "../SymptomInput/SymptomInput";
 
 function QuestionField({ question, value, error, onChange, symptomInputRef }) {
@@ -51,7 +52,7 @@ function QuestionField({ question, value, error, onChange, symptomInputRef }) {
           </option>
           {question.options.map((option) => (
             <option key={option} value={option}>
-              {question.optionLabels?.[option] || option.replace(/_/g, " ")}
+              {question.optionLabels?.[option] || formatOptionLabel(option)}
             </option>
           ))}
         </select>
@@ -80,7 +81,7 @@ function QuestionField({ question, value, error, onChange, symptomInputRef }) {
               className={`chip ${selected.includes(option) ? "chip-active" : ""}`}
               onClick={() => toggle(option)}
             >
-              {question.optionLabels?.[option] || option.replace(/_/g, " ")}
+              {question.optionLabels?.[option] || formatOptionLabel(option)}
             </button>
           ))}
         </div>
