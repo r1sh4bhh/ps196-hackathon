@@ -126,6 +126,8 @@ function selectPrediction(prediction) {
     confidence: prediction?.confidence ?? null,
     evidence: prediction?.evidence || [],
     next_test: prediction?.next_test || prediction?.evidence?.[0]?.next_test || null,
+    source: prediction?.source ?? null,
+    fallback_reason: prediction?.fallback_reason ?? null,
   };
 }
 

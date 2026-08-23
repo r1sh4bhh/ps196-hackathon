@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import PatientForm from "./components/PatientForm/PatientForm";
 import DashboardShell from "./components/Dashboard/DashboardShell";
 import OnboardingWizard from "./components/Onboarding/OnboardingWizard";
@@ -10,18 +10,24 @@ import {
   loadProfile,
   clearProfile,
   listProfiles,
+  saveProfile,
   setActivePatientId,
   loadLabResults,
 } from "./storage/userProfileStore";
 import { getRole, setRole, ROLES } from "./storage/roleStore";
 import { buildPatientDataFromProfile } from "./storage/buildPatientData";
-import { demoPatientHistory } from "./mocks/demoPatientHistory";
+import { demoPatientHistory, demoPatientIds, demoProfiles } from "./mocks/demoPatientHistory";
 import {
   removeAssessment,
   saveAssessment,
   listAssessments,
   latestAssessment,
 } from "./storage/assessmentHistory";
+import { submitPatientData } from "./api/predictService";
+import { computeAllBaselines } from "./utils/baseline";
+import { buildRiskTrajectory } from "./utils/trajectory";
+import { buildBaselineHistory } from "./vitals/aggregateDailyReadings";
+import { listReadings } from "./storage/vitalsReadingStore";
 import ThemeToggle from "./components/ThemeToggle";
 import VitalsProviderPanel from "./components/VitalsProvider/VitalsProviderPanel";
 
@@ -49,6 +55,10 @@ export default function App() {
   const [role, setRoleValue] = useState(() => getRole());
   const [profile, setProfile] = useState(() => loadProfile());
   const [view, setView] = useState(() => computeInitialView(getRole(), loadProfile()));
+  const [demoVersion, setDemoVersion] = useState(0);
+  const [demoLoadError, setDemoLoadError] = useState(null);
+  const [demoLoadingPatientId, setDemoLoadingPatientId] = useState(null);
+  const demoRequestId = useRef(0);
 
   const handleRoleSelected = (nextRole) => {
     setRole(nextRole);
@@ -96,11 +106,17 @@ export default function App() {
     if (!setActivePatientId(patientId)) {
       return;
     }
-    setProfile(loadProfile(patientId));
+    const selectedProfile = loadProfile(patientId);
+    setProfile(selectedProfile);
+    if (selectedProfile?.isDemo) {
+      loadDemoDashboard(patientId);
+      return;
+    }
     setView("form");
   };
 
   const handleBackToPatientList = () => {
+    demoRequestId.current += 1;
     setView("clinician-list");
   };
 
@@ -115,12 +131,13 @@ export default function App() {
   // switch, onboarding, or redo), rather than on every render. `profile` is
   // used only as a cache-invalidation signal here, not read directly.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const savedProfiles = useMemo(() => listProfiles(), [profile]);
+  const savedProfiles = useMemo(() => listProfiles(), [profile, demoVersion]);
   const clinicianPatients = useMemo(
     () =>
       savedProfiles.map((savedProfile) => ({
         patientId: savedProfile.patientId,
         latestAssessment: latestAssessment(savedProfile.patientId),
+        isDemo: savedProfile.isDemo === true,
       })),
     [savedProfiles]
   );
@@ -135,11 +152,84 @@ export default function App() {
     : null;
 
   const handleLoadDemoHistory = () => {
-    demoPatientHistory.forEach(saveAssessment);
+    demoProfiles.forEach((demoProfile) => {
+      const existingProfile = loadProfile(demoProfile.patientId);
+      const hasRealHistory = listAssessments(demoProfile.patientId).some(
+        (assessment) => !assessment.isDemo
+      );
+      if ((existingProfile && !existingProfile.isDemo) || hasRealHistory) {
+        return;
+      }
+      saveProfile(demoProfile, { setActive: false });
+      demoPatientHistory
+        .filter((assessment) => assessment.patientId === demoProfile.patientId)
+        .forEach(saveAssessment);
+    });
+    setDemoVersion((version) => version + 1);
   };
 
   const handleClearDemoHistory = () => {
-    demoPatientHistory.forEach((assessment) => removeAssessment(assessment.id));
+    demoPatientIds.forEach((patientId) => {
+      listAssessments(patientId)
+        .filter((assessment) => assessment.isDemo)
+        .forEach((assessment) => removeAssessment(assessment.id));
+      if (loadProfile(patientId)?.isDemo) {
+        clearProfile(patientId);
+      }
+    });
+    setProfile(loadProfile());
+    setDemoVersion((version) => version + 1);
+  };
+
+  const loadDemoDashboard = async (patientId) => {
+    const requestId = demoRequestId.current + 1;
+    demoRequestId.current = requestId;
+    setDemoLoadingPatientId(patientId);
+    const history = listAssessments(patientId);
+    if (!history.length) {
+      setDemoLoadError("This demo patient has no visit history. Reload the demo patients and try again.");
+      setView("demo-loading");
+      return;
+    }
+
+    setDemoLoadError(null);
+    setView("demo-loading");
+    try {
+      // These records begin without predictions. Compute every point from the
+      // live service so the displayed risk trajectory is never fabricated.
+      const predictions = await Promise.all(
+        history.map((assessment) => submitPatientData(assessment.patientData))
+      );
+      if (requestId !== demoRequestId.current) {
+        return;
+      }
+      history.forEach((assessment, index) =>
+        saveAssessment({ ...assessment, prediction: predictions[index] })
+      );
+
+      const fullHistory = listAssessments(patientId);
+      const currentAssessment = fullHistory[fullHistory.length - 1];
+      const currentPrediction = predictions[predictions.length - 1];
+      const baselineHistory = buildBaselineHistory(fullHistory, listReadings(patientId));
+      const resultBaselines = computeAllBaselines(baselineHistory, currentAssessment.patientData);
+      const resultTrajectory = currentPrediction.top_disease
+        ? buildRiskTrajectory(fullHistory, currentPrediction.top_disease)
+        : [];
+
+      handlePredictionReceived(
+        currentAssessment.patientData,
+        currentPrediction,
+        resultBaselines,
+        baselineHistory[0]?.timestamp,
+        resultTrajectory,
+        {}
+      );
+    } catch (error) {
+      if (requestId !== demoRequestId.current) {
+        return;
+      }
+      setDemoLoadError(error.message || "The model could not be reached. Please try again.");
+    }
   };
 
   return (
@@ -156,7 +246,35 @@ export default function App() {
           patients={clinicianPatients}
           onSelectPatient={handleSwitchPerson}
           onAddPatient={handleAddPerson}
+          onLoadDemoPatients={handleLoadDemoHistory}
+          onClearDemoPatients={handleClearDemoHistory}
         />
+      )}
+
+      {view === "demo-loading" && (
+        <section className="demo-model-loading" aria-live="polite">
+          <h1>Preparing demo dashboard</h1>
+          {demoLoadError ? (
+            <>
+              <p>{demoLoadError}</p>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => loadDemoDashboard(demoLoadingPatientId)}
+              >
+                Retry model prediction
+              </button>
+            </>
+          ) : (
+            <p>
+              The model is running on this patient&apos;s visit history. This can take up to a
+              minute while the demo service wakes up.
+            </p>
+          )}
+          <button type="button" className="btn-secondary" onClick={handleBackToPatientList}>
+            Back to patient list
+          </button>
+        </section>
       )}
 
       {view === "onboarding" && <OnboardingWizard onComplete={handleOnboardingComplete} />}
@@ -183,10 +301,10 @@ export default function App() {
               Edit profile / redo onboarding
             </button>
             <button type="button" className="btn-secondary" onClick={handleLoadDemoHistory}>
-              Load demo patient history (P001)
+              Load demo patients
             </button>
             <button type="button" className="btn-secondary" onClick={handleClearDemoHistory}>
-              Clear demo patient history
+              Clear demo patients
             </button>
           </div>
           {profile?.patientId ? (

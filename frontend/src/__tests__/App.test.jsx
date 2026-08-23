@@ -3,8 +3,16 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { ROLES, getRole } from "../storage/roleStore";
-import { saveLabResults, saveProfile, setActivePatientId } from "../storage/userProfileStore";
-import { saveAssessment } from "../storage/assessmentHistory";
+import {
+  loadProfile,
+  saveLabResults,
+  saveProfile,
+  setActivePatientId,
+} from "../storage/userProfileStore";
+import { listAssessments, saveAssessment } from "../storage/assessmentHistory";
+import { demoPatientHistory, demoPatientIds } from "../mocks/demoPatientHistory";
+import { computeAllBaselines } from "../utils/baseline";
+import { submitPatientData } from "../api/predictService";
 
 vi.mock("../api/predictService", () => ({
   submitPatientData: vi.fn(async () => ({
@@ -21,6 +29,7 @@ let root;
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   localStorage.clear();
+  submitPatientData.mockClear();
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -229,5 +238,85 @@ describe("App clinician patient list", () => {
 
     expect(container.textContent).toContain("Continuing as");
     expect(container.textContent).toContain("P001");
+  });
+
+  it("loads clearly marked demo patients only after a clinician opts in", () => {
+    localStorage.setItem("ps196_role", ROLES.CLINICIAN);
+    render();
+
+    expect(container.textContent).toContain("No patients saved on this device yet");
+    expect(container.textContent).not.toContain("DEMO-MET-001");
+
+    const loadButton = [...container.querySelectorAll("button")].find((button) =>
+      button.textContent.includes("Load demo patients")
+    );
+    act(() => loadButton.click());
+
+    expect(container.textContent).toContain("DEMO-MET-001");
+    expect(container.textContent).toContain("DEMO-STABLE-002");
+    expect(container.textContent).toContain("DEMO-BP-003");
+    expect(container.querySelectorAll(".demo-patient-badge")).toHaveLength(3);
+  });
+
+  it("clears demo records without removing a real patient", () => {
+    seedProfile("REAL-001", 42, 172);
+    seedAssessment("REAL-001", 42, 172);
+    localStorage.setItem("ps196_role", ROLES.CLINICIAN);
+    render();
+
+    const loadButton = [...container.querySelectorAll("button")].find((button) =>
+      button.textContent.includes("Load demo patients")
+    );
+    act(() => loadButton.click());
+    const clearButton = [...container.querySelectorAll("button")].find((button) =>
+      button.textContent.includes("Clear demo patients")
+    );
+    act(() => clearButton.click());
+
+    expect(container.textContent).toContain("REAL-001");
+    expect(container.textContent).not.toContain("DEMO-MET-001");
+    expect(listAssessments("REAL-001")).toHaveLength(1);
+    expect(demoPatientIds.every((patientId) => loadProfile(patientId) === null)).toBe(true);
+    expect(demoPatientIds.every((patientId) => listAssessments(patientId).length === 0)).toBe(true);
+  });
+
+  it("runs the model for a selected demo patient's visits before showing the dashboard", async () => {
+    localStorage.setItem("ps196_role", ROLES.CLINICIAN);
+    render();
+    const loadButton = [...container.querySelectorAll("button")].find((button) =>
+      button.textContent.includes("Load demo patients")
+    );
+    act(() => loadButton.click());
+
+    const demoRow = [...container.querySelectorAll(".clinician-patient-list-select")].find((row) =>
+      row.textContent.includes("DEMO-MET-001")
+    );
+    await act(async () => {
+      demoRow.click();
+      await Promise.resolve();
+    });
+
+    expect(submitPatientData).toHaveBeenCalledTimes(5);
+    expect(container.textContent).toContain("Risk Dashboard");
+    expect(container.textContent).toContain("Model output");
+  });
+});
+
+describe("demo patient histories", () => {
+  it("establishes baselines and reports no meaningful stable-patient trend", () => {
+    for (const patientId of demoPatientIds) {
+      const history = demoPatientHistory.filter((assessment) => assessment.patientId === patientId);
+      const baselines = computeAllBaselines(history, history.at(-1).patientData);
+
+      expect(history).toHaveLength(5);
+      expect(baselines.systolic_bp.status).toBe("established");
+    }
+
+    const stableHistory = demoPatientHistory.filter(
+      (assessment) => assessment.patientId === "DEMO-STABLE-002"
+    );
+    const stableBaselines = computeAllBaselines(stableHistory, stableHistory.at(-1).patientData);
+    expect(stableBaselines.systolic_bp.trend).toBe("stable");
+    expect(stableBaselines.glucose.trend).toBe("stable");
   });
 });
