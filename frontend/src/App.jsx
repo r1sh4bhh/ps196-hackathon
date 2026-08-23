@@ -213,7 +213,9 @@ export default function App() {
     setDemoLoadingPatientId(patientId);
     const history = listAssessments(patientId);
     if (!history.length) {
-      setDemoLoadError("This demo patient has no visit history. Reload the demo patients and try again.");
+      setDemoLoadError(
+        "This demo patient has no visit history. Reload the demo patients and try again."
+      );
       setView("demo-loading");
       return;
     }
@@ -332,14 +334,15 @@ export default function App() {
             </section>
           )}
           {role === ROLES.CLINICIAN && (
+            // One row, not two: "Back to patient list" and the profile/demo
+            // utilities are the same kind of action here, and two stacked
+            // `.profile-actions` divs read as an accidental split.
             <div className="profile-actions">
               <button type="button" className="btn-secondary" onClick={handleBackToPatientList}>
                 Back to patient list
               </button>
+              {profileUtilityActions}
             </div>
-          )}
-          {role === ROLES.CLINICIAN && (
-            <div className="profile-actions">{profileUtilityActions}</div>
           )}
           {profile?.patientId ? (
             // Keyed by patientId for the same reason the form is: device
